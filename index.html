@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CLM AI System — Provider Contract Management</title>
+  <title>CLM System — Provider Contract Management</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -21,7 +21,7 @@
         </svg>
       </div>
       <div>
-        <div class="brand-title">CLM AI System</div>
+        <div class="brand-title">CLM System</div>
         <div class="brand-sub">NZ Private Health Insurer</div>
       </div>
     </div>
@@ -34,12 +34,22 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
           <span>Dashboard</span>
         </button>
-        <button class="nav-item" data-screen="studio" onclick="showScreen('studio')"
-          data-tip-title="AI Studio" data-tip-phase="Phase 1 · Live"
-          data-tip-desc="Natural language contract authoring, amendment, and renewal powered by Claude. Every output is grounded — the AI calls structured tools and never invents data.">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span>AI Studio</span>
+        <button class="nav-item" data-screen="studio" onclick="showScreen('studio')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          <span>AI Voice Assistant</span>
           <span class="nav-badge ai-badge">AI</span>
+        </button>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-label">Network</div>
+        <button class="nav-item" data-screen="network" onclick="showScreen('network')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          <span>Network List</span>
+        </button>
+        <button class="nav-item" data-screen="templates" onclick="showScreen('templates')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          <span>Template Repository</span>
         </button>
       </div>
 
@@ -49,25 +59,13 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           <span>Contract Registry</span>
         </button>
-        <button class="nav-item" data-screen="clauses" onclick="showScreen('clauses')"
-          data-tip-title="Clause Library" data-tip-phase="Phase 2 · Planned"
-          data-tip-desc="A curated library of pre-approved legal clauses maintained by your legal team. Contracts are assembled from these building blocks, ensuring every clause is compliant before it's inserted.">
+        <button class="nav-item" data-screen="clauses" onclick="showScreen('clauses')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
           <span>Clause Library</span>
-          <span class="nav-badge phase-badge">P2</span>
         </button>
-        <button class="nav-item" data-screen="negotiation" onclick="showScreen('negotiation')"
-          data-tip-title="Negotiation & Redlining" data-tip-phase="Phase 2 · Planned"
-          data-tip-desc="Track-changes contract negotiation with providers. Each round of edits is versioned, and the AI can summarise what changed between drafts. Replaces email-based redlining entirely.">
+        <button class="nav-item" data-screen="negotiation" onclick="showScreen('negotiation')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           <span>Negotiation & Redlining</span>
-          <span class="nav-badge phase-badge">P2</span>
-        </button>
-        <button class="nav-item" data-screen="pricing" onclick="showScreen('pricing')"
-          data-tip-title="Pricing Schedule Management" data-tip-phase="Phase 1 · Live"
-          data-tip-desc="Visual explorer for the Rules Engine. See which pricing model applies to each contract, how multipliers stack, and what rate any claim combination would produce — without running a query.">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          <span>Pricing Schedule</span>
         </button>
       </div>
 
@@ -78,28 +76,13 @@
           <span>Approvals</span>
           <span class="nav-badge alert-badge" id="badgeApprovals">2</span>
         </button>
-        <button class="nav-item" data-screen="esignature" onclick="showScreen('esignature')"
-          data-tip-title="E-Signature (DocuSign)" data-tip-phase="Phase 2 · Planned"
-          data-tip-desc="DocuSign-integrated signing queue. Once a contract clears the approval chain, it moves here for electronic signature by both parties. Full audit trail of who signed, when, and on which device.">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11.08V8l-6-6H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h6"/><path d="M14 3v5h5"/><path d="M18 21l2 2 4-4"/></svg>
-          <span>E-Signature</span>
-          <span class="nav-badge phase-badge">P2</span>
-        </button>
       </div>
 
       <div class="nav-group">
-        <div class="nav-group-label">Performance</div>
-        <button class="nav-item" data-screen="utilization" onclick="showScreen('utilization')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          <span>Utilization Monitor</span>
-          <span class="nav-badge alert-badge" id="badgeUtilization">2</span>
-        </button>
-        <button class="nav-item" data-screen="obligations" onclick="showScreen('obligations')"
-          data-tip-title="Obligations & SLA Tracking" data-tip-phase="Phase 2 · Planned"
-          data-tip-desc="Post-signature monitoring of contractual obligations and service-level commitments. Tracks wait times, reporting deadlines, and quality KPIs against what was contracted — and alerts when a provider is at risk of breach.">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span>Obligations & SLA</span>
-          <span class="nav-badge phase-badge">P2</span>
+        <div class="nav-group-label">Settings</div>
+        <button class="nav-item" data-screen="integrations" onclick="showScreen('integrations')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+          <span>Integrations & API</span>
         </button>
       </div>
 
@@ -123,6 +106,7 @@
 
       <div class="screen" id="screen-dashboard"></div>
 
+      <!-- AI Voice Assistant -->
       <div class="screen studio-layout" id="screen-studio">
         <div class="chat-panel">
           <div class="chat-messages" id="chatMessages">
@@ -161,7 +145,6 @@
             <div class="voice-status" id="voiceStatus"></div>
           </div>
         </div>
-
         <div class="preview-panel">
           <div class="preview-header">
             <span class="preview-title">Contract Preview</span>
@@ -190,14 +173,13 @@
         </div>
       </div>
 
+      <div class="screen" id="screen-network"></div>
+      <div class="screen" id="screen-templates"></div>
       <div class="screen" id="screen-contracts"></div>
-      <div class="screen" id="screen-approvals"></div>
-      <div class="screen" id="screen-utilization"></div>
       <div class="screen" id="screen-clauses"></div>
-      <div class="screen" id="screen-esignature"></div>
       <div class="screen" id="screen-negotiation"></div>
-      <div class="screen" id="screen-obligations"></div>
-      <div class="screen" id="screen-pricing"></div>
+      <div class="screen" id="screen-approvals"></div>
+      <div class="screen" id="screen-integrations"></div>
 
     </div>
   </div>

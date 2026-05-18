@@ -6,11 +6,11 @@ let recognition = null;
 let currentDraft = null;
 let selectedContractId = null;
 let selectedNegotiationId = null;
-let selectedEsigId = null;
 let expandedClauseId = null;
-let selectedObligationId = null;
-let selectedPricingContractId = null;
+let expandedTemplateId = null;
+let selectedProviderId = null;
 let clauseCategory = "All";
+let contractStatusFilter = "All";
 
 // ─── Synthetic data ───────────────────────────────────────────────────────────
 
@@ -25,8 +25,12 @@ const CONTRACTS = [
     tiers: [{from:1,to:75,rate:2900},{from:76,to:150,rate:2600},{from:151,to:null,rate:2400}] },
   { id: "CTR-005", provider: "Wellington Regional Hospital",city: "Wellington",    procedure: "Total Knee Replacement", model: "MATRIX",    rateRange: "$2,800–$5,000", cap: 120, status: "ACTIVE",   expiry: "2027-06-30", ytd: 38,  networkTier: "preferred",
     matrix: {"A:high":5000,"A:low":3500,"B:high":4200,"B:low":2800} },
-  { id: "CTR-006", provider: "Auckland Surgical Centre",    city: "Auckland",      procedure: "Total Hip Replacement",  model: "STAIRCASE", rateRange: "$4,900–$5,800", cap: 120, status: "ACTIVE",   expiry: "2027-06-30", ytd: 107, networkTier: "preferred",
+  { id: "CTR-006", provider: "Auckland Surgical Centre",    city: "Auckland",      procedure: "Total Hip Replacement",  model: "STAIRCASE", rateRange: "$4,900–$5,800", cap: 120, status: "ACTIVE",      expiry: "2027-06-30", ytd: 107, networkTier: "preferred",
     threshold: 100, rateBefore: 5800, rateAfter: 4900 },
+  { id: "CTR-007", provider: "Dunedin Surgical Group",      city: "Dunedin",       procedure: "Knee Arthroscopy",       model: "FFS",       rateRange: "$2,400",        cap: 60,  status: "NEGOTIATION", expiry: "2027-03-31", ytd: 0,   networkTier: "standard",
+    rate: 2400 },
+  { id: "CTR-DRAFT", provider: "Christchurch Surgical Centre", city: "Christchurch", procedure: "Total Knee Replacement", model: "TIERED",  rateRange: "$3,420–$3,990", cap: 120, status: "DRAFT",       expiry: "2027-06-30", ytd: 0,   networkTier: "preferred",
+    tiers: [{from:1,to:40,rate:3990},{from:41,to:80,rate:3705},{from:81,to:null,rate:3420}] },
 ];
 
 const APPROVALS = [
@@ -75,16 +79,13 @@ const CLAUSES = [
     body: "The Provider shall submit a monthly claims report to the Health Insurer within 10 business days of the end of each calendar month. Reports shall be submitted in the agreed electronic format compatible with the IQVIA TMB claims platform and shall include procedure codes, dates of service, NHI numbers, provider identifiers, and total charges billed." },
 ];
 
-const ESIG_DOCS = [
-  { id: "ESIG-001", contractId: "CTR-DRAFT-CHC-001", provider: "Christchurch Surgical Centre", type: "New Contract", procedure: "Total Knee Replacement",
-    status: "awaiting-provider", sentAt: "12 May 2026, 14:30",
-    signers: [{name:"Sarah Mitchell", role:"Contract Manager, Health Insurer", signed: true, signedAt:"12 May 2026, 14:31"}, {name:"Dr. James Chen", role:"Medical Director, Christchurch Surgical", signed: false}] },
-  { id: "ESIG-002", contractId: "AMD-CTR-001-001", provider: "Auckland Surgical Centre", type: "Amendment", procedure: "Total Knee Replacement",
-    status: "awaiting-insurer", sentAt: "11 May 2026, 16:00",
-    signers: [{name:"Michael Thompson", role:"CEO, Auckland Surgical Centre", signed: true, signedAt:"12 May 2026, 09:15"}, {name:"Sarah Mitchell", role:"Contract Manager, Health Insurer", signed: false}] },
-  { id: "ESIG-003", contractId: "CTR-004", provider: "Auckland Surgical Centre", type: "Renewal", procedure: "Knee Arthroscopy",
-    status: "completed", sentAt: "28 Apr 2026, 11:00", completedAt: "30 Apr 2026, 15:22",
-    signers: [{name:"James Okonkwo", role:"Contracting Manager, Health Insurer", signed: true, signedAt:"29 Apr 2026, 10:00"}, {name:"Michael Thompson", role:"CEO, Auckland Surgical Centre", signed: true, signedAt:"30 Apr 2026, 15:22"}] },
+const PROVIDERS = [
+  { id:"PRV-001", name:"Auckland Surgical Centre",     city:"Auckland",     type:"Surgical Centre",   tier:"gold",     status:"contracted",     contracts:3, contact:"Michael Thompson" },
+  { id:"PRV-002", name:"Wellington Orthopaedics",      city:"Wellington",   type:"Specialist Clinic", tier:"gold",     status:"contracted",     contracts:1, contact:"Dr. Sarah Lee" },
+  { id:"PRV-003", name:"Christchurch Surgical Centre", city:"Christchurch", type:"Surgical Centre",   tier:"silver",   status:"in-negotiation", contracts:0, contact:"Dr. James Chen" },
+  { id:"PRV-004", name:"Wellington Regional Hospital", city:"Wellington",   type:"Hospital",          tier:"platinum", status:"contracted",     contracts:1, contact:"Helen Park" },
+  { id:"PRV-005", name:"Dunedin Surgical Group",       city:"Dunedin",      type:"Surgical Centre",   tier:"standard", status:"in-negotiation", contracts:0, contact:"Dr. Andrew Wu" },
+  { id:"PRV-006", name:"Hamilton Health Partners",     city:"Hamilton",     type:"Specialist Clinic", tier:"standard", status:"lead",           contracts:0, contact:"Dr. Maria Santos" },
 ];
 
 const NEGOTIATIONS = [
@@ -103,19 +104,18 @@ const NEGOTIATIONS = [
   },
 ];
 
-const OBLIGATIONS = [
-  { id: "OBL-001", contractId: "CTR-002", provider: "Wellington Orthopaedics", type: "Wait Time", metric: "FSA within 60 days of referral", current: 52, target: 60, unit: "days avg", status: "on-track", trend: "↓ improving", lastReported: "Apr 2026",
-    history: [{month:"Feb",value:48},{month:"Mar",value:55},{month:"Apr",value:52}] },
-  { id: "OBL-002", contractId: "CTR-001", provider: "Auckland Surgical Centre", type: "Reporting", metric: "Monthly claims submission", current: 8, target: 10, unit: "days avg", status: "on-track", trend: "↓ improving", lastReported: "Apr 2026",
-    history: [{month:"Feb",value:12},{month:"Mar",value:9},{month:"Apr",value:8}] },
-  { id: "OBL-003", contractId: "CTR-003", provider: "Christchurch Surgical Centre", type: "Quality", metric: "Complication rate ≤ 2%", current: 3.1, target: 2.0, unit: "% rate", status: "at-risk", trend: "↑ worsening", lastReported: "Apr 2026",
-    history: [{month:"Feb",value:1.8},{month:"Mar",value:2.4},{month:"Apr",value:3.1}] },
-  { id: "OBL-004", contractId: "CTR-005", provider: "Wellington Regional Hospital", type: "Wait Time", metric: "Surgery within 4 months of FSA", current: 89, target: 80, unit: "days avg", status: "breach", trend: "↑ worsening", lastReported: "Apr 2026",
-    history: [{month:"Feb",value:75},{month:"Mar",value:83},{month:"Apr",value:89}] },
-  { id: "OBL-005", contractId: "CTR-006", provider: "Auckland Surgical Centre", type: "Reporting", metric: "Post-op outcome data submission", current: 5, target: 10, unit: "days avg", status: "on-track", trend: "→ stable", lastReported: "Apr 2026",
-    history: [{month:"Feb",value:5},{month:"Mar",value:6},{month:"Apr",value:5}] },
-  { id: "OBL-006", contractId: "CTR-004", provider: "Auckland Surgical Centre", type: "Quality", metric: "30-day readmission rate ≤ 3%", current: 1.8, target: 3.0, unit: "% rate", status: "on-track", trend: "→ stable", lastReported: "Apr 2026",
-    history: [{month:"Feb",value:2.1},{month:"Mar",value:1.9},{month:"Apr",value:1.8}] },
+const TEMPLATES = [
+  { id:"TPL-001", name:"Knee Surgery — Standard",       bucket:"A", procedures:["Total Knee Replacement","Knee Arthroscopy"],          clauses:8,  model:"TIERED",    baseRate:4000, lastUpdated:"Mar 2026", usedIn:3 },
+  { id:"TPL-002", name:"Hip Surgery — Standard",        bucket:"B", procedures:["Total Hip Replacement"],                              clauses:8,  model:"STAIRCASE", baseRate:5000, lastUpdated:"Jan 2026", usedIn:1 },
+  { id:"TPL-003", name:"General Orthopaedics — FFS",    bucket:"B", procedures:["Shoulder Replacement","Ankle Surgery"],               clauses:7,  model:"FFS",       baseRate:3500, lastUpdated:"Feb 2026", usedIn:0 },
+  { id:"TPL-004", name:"Complex Surgery — Matrix",      bucket:"C", procedures:["Spinal Surgery","Complex Joint Reconstruction"],      clauses:10, model:"MATRIX",    baseRate:6000, lastUpdated:"Apr 2026", usedIn:1 },
+];
+
+const INTEGRATIONS = [
+  { id:"INT-001", name:"DocuSign",     category:"E-Signature",       status:"connected",    description:"Electronic signature for all executed contracts",                    lastSync:"18 May 2026" },
+  { id:"INT-002", name:"IQVIA TMB",    category:"Claims Data",       status:"connected",    description:"Real-time claims data feed for utilization and adjudication",        lastSync:"18 May 2026" },
+  { id:"INT-003", name:"NZ HPI",       category:"Provider Validation",status:"connected",   description:"Health Provider Index — validates provider registration status",      lastSync:"18 May 2026" },
+  { id:"INT-004", name:"Salesforce CRM",category:"CRM",             status:"disconnected", description:"Customer relationship data sync for provider management",            lastSync:"Never" },
 ];
 
 // ─── Screen switching ─────────────────────────────────────────────────────────
@@ -131,15 +131,14 @@ function showScreen(name) {
   if (!renderedScreens.has(name)) {
     renderedScreens.add(name);
     const renderers = {
-      dashboard:   renderDashboard,
-      contracts:   renderContracts,
-      approvals:   renderApprovals,
-      utilization: renderUtilization,
-      clauses:     renderClauseLibrary,
-      esignature:  renderESignature,
-      negotiation: renderNegotiation,
-      obligations: renderObligations,
-      pricing:     renderPricingSchedule,
+      dashboard:    renderDashboard,
+      contracts:    renderContracts,
+      approvals:    renderApprovals,
+      network:      renderNetworkList,
+      clauses:      renderClauseLibrary,
+      negotiation:  renderNegotiation,
+      templates:    renderTemplateRepository,
+      integrations: renderIntegrations,
     };
     renderers[name]?.();
   }
@@ -233,7 +232,7 @@ function renderDashboard() {
             ${alertContracts.map(c => {
               const level = c.pct >= 90 ? "critical" : "warning";
               const weeksLeft = Math.round(((c.cap - c.ytd) / (c.ytd / 10)) * 4.33);
-              return `<div class="alert-row"><div class="alert-info"><div class="alert-title">${c.provider}</div><div class="alert-sub">${c.procedure} · ${c.id} · ${c.model}</div><div class="alert-bar-wrap"><div class="alert-bar ${level}" style="width:${c.pct}%"></div></div></div><div class="alert-meta"><div class="alert-pct ${level}">${c.pct}%</div><div class="alert-days">${c.ytd}/${c.cap} · ~${weeksLeft}w to cap</div><button class="btn-sm outline" style="margin-top:6px;font-size:11px" onclick="showScreen('utilization')">View</button></div></div>`;
+              return `<div class="alert-row"><div class="alert-info"><div class="alert-title">${c.provider}</div><div class="alert-sub">${c.procedure} · ${c.id} · ${c.model}</div><div class="alert-bar-wrap"><div class="alert-bar ${level}" style="width:${c.pct}%"></div></div></div><div class="alert-meta"><div class="alert-pct ${level}">${c.pct}%</div><div class="alert-days">${c.ytd}/${c.cap} · ~${weeksLeft}w to cap</div><button class="btn-sm outline" style="margin-top:6px;font-size:11px" onclick="showScreen('contracts')">View Contract</button></div></div>`;
             }).join("")}
           </div>
           <div class="section-card">
@@ -262,13 +261,24 @@ function renderDashboard() {
 // ─── Screen 3: Contract Registry ──────────────────────────────────────────────
 
 function renderContracts() {
+  const statusCounts = {
+    All: CONTRACTS.length,
+    Active: CONTRACTS.filter(c=>c.status==="ACTIVE").length,
+    Expiring: CONTRACTS.filter(c=>c.status==="EXPIRING").length,
+    Draft: CONTRACTS.filter(c=>c.status==="DRAFT").length,
+    Negotiation: CONTRACTS.filter(c=>c.status==="NEGOTIATION").length,
+  };
+  const tabsHtml = ["All","Active","Expiring","Draft","Negotiation"].map(s =>
+    `<button class="status-tab ${contractStatusFilter===s?"active":""}" onclick="setContractStatusFilter('${s}')">${s} <span class="status-tab-count">${statusCounts[s]}</span></button>`
+  ).join("");
   document.getElementById("screen-contracts").innerHTML = `
     <div class="screen-header">
       <div class="screen-header-top">
-        <div><div class="screen-title">Contract Registry</div><div class="screen-sub">All active and expiring provider contracts — click a row for details</div></div>
+        <div><div class="screen-title">Contract Registry</div><div class="screen-sub">${CONTRACTS.length} contracts — click a row to view details and manage</div></div>
         <button class="btn-sm primary" onclick="showScreen('studio')">+ Draft New Contract</button>
       </div>
     </div>
+    <div class="status-tabs">${tabsHtml}</div>
     <div class="filter-bar">
       <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search provider, procedure, or contract ID..." oninput="filterContracts(this.value)" /></div>
       <select class="filter-select" onchange="filterContracts('',this.value)"><option value="">All models</option><option value="TIERED">Tiered</option><option value="FFS">FFS</option><option value="MATRIX">Matrix</option><option value="STAIRCASE">Staircase</option></select>
@@ -302,12 +312,25 @@ function renderContractRows(list) {
 function filterContracts(search, model) {
   const s = (search || "").toLowerCase();
   const m = model || document.querySelector(".filter-select")?.value || "";
-  const filtered = CONTRACTS.filter(c =>
-    (!s || c.id.toLowerCase().includes(s) || c.provider.toLowerCase().includes(s) || c.procedure.toLowerCase().includes(s)) &&
-    (!m || c.model === m)
-  );
+  const filtered = CONTRACTS.filter(c => {
+    const matchesStatus = contractStatusFilter === "All"
+      || (contractStatusFilter === "Active"      && c.status === "ACTIVE")
+      || (contractStatusFilter === "Expiring"    && c.status === "EXPIRING")
+      || (contractStatusFilter === "Draft"       && c.status === "DRAFT")
+      || (contractStatusFilter === "Negotiation" && c.status === "NEGOTIATION");
+    return matchesStatus &&
+      (!s || c.id.toLowerCase().includes(s) || c.provider.toLowerCase().includes(s) || c.procedure.toLowerCase().includes(s)) &&
+      (!m || c.model === m);
+  });
   const rows = document.getElementById("contractRows");
   if (rows) rows.innerHTML = renderContractRows(filtered);
+}
+
+function setContractStatusFilter(filter) {
+  contractStatusFilter = filter;
+  renderedScreens.delete("contracts");
+  renderContracts();
+  renderedScreens.add("contracts");
 }
 
 function selectContract(id) {
@@ -336,8 +359,18 @@ function selectContract(id) {
       <div class="detail-section"><div class="detail-label">Pricing Model</div><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span class="status-pill draft">${c.model}</span><span style="font-size:12px;color:var(--text-muted)">${c.city} · ${c.networkTier.toUpperCase()} network</span></div>${rateDetail}</div>
       <div class="detail-section"><div class="detail-label">YTD Utilization</div><div class="util-bar-wrap"><div class="util-bar" style="width:${pct}%;background:var(--${level==="ok"?"green":level==="warning"?"amber":"red"})"></div></div><div style="display:flex;justify-content:space-between;font-size:12px;margin-top:5px"><span style="font-weight:600">${c.ytd} of ${c.cap} procedures (${pct}%)</span><span class="util-alert-badge ${level}">${level.toUpperCase()}</span></div></div>
       <div class="detail-section"><div class="detail-label">Contract Period</div><div class="detail-value">Expires <strong>${c.expiry}</strong> · ${days} days remaining</div></div>
-      <div class="detail-section" style="display:flex;gap:8px"><button class="btn-sm primary" onclick="showScreen('studio')">Amend in AI Studio</button><button class="btn-sm outline" onclick="showScreen('studio')">Initiate Renewal</button></div>
+      <div class="detail-section" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-sm primary" onclick="showScreen('studio')">Amend in AI Studio</button><button class="btn-sm outline" onclick="showScreen('studio')">Initiate Renewal</button>${(c.status==="ACTIVE"||c.status==="EXPIRING")?`<button class="btn-sm success" onclick="sendForSignature('${c.id}')">Send for Signature ✉</button>`:""}</div>
     </div>`;
+}
+
+function sendForSignature(id) {
+  const c = CONTRACTS.find(x => x.id === id);
+  if (!c) return;
+  const toast = document.createElement("div");
+  toast.style.cssText = "position:fixed;bottom:24px;right:24px;background:#047857;color:white;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,0.2);z-index:9999;animation:fadeUp 0.3s ease";
+  toast.textContent = `✓ Sent via DocuSign — ${c.provider} will receive the signing request`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
 }
 
 // ─── Screen 4: Approval Queue ─────────────────────────────────────────────────
@@ -411,34 +444,74 @@ function updateApprovalBadge() {
   if (badge) { badge.textContent = pending; badge.style.display = pending === 0 ? "none" : ""; }
 }
 
-// ─── Screen 5: Utilization Monitor ───────────────────────────────────────────
+// ─── Screen: Network List ─────────────────────────────────────────────────────
 
-function renderUtilization() {
-  const cards = CONTRACTS.map(c => {
-    const pct = Math.round((c.ytd / c.cap) * 100);
-    const level = pct >= 90 ? "critical" : pct >= 80 ? "warning" : pct >= 60 ? "warning" : "ok";
-    const runRate = Math.round((c.ytd / 10) * 12);
-    const weeksLeft = c.ytd > 0 ? Math.round(((c.cap - c.ytd) / (c.ytd / (10 * 4.33)))) : null;
-    return { ...c, pct, level, runRate, weeksLeft };
-  });
-  const alertCount = cards.filter(c => c.pct >= 80).length;
-
-  document.getElementById("screen-utilization").innerHTML = `
-    <div class="screen-header"><div class="screen-header-top"><div><div class="screen-title">Utilization Monitor</div><div class="screen-sub">Live cap tracking across all contracted providers · Data: IQVIA TMB · As of 15 May 2026</div></div></div></div>
-    <div class="screen-body">
-      <div class="stat-row" style="grid-template-columns:repeat(3,1fr);max-width:640px;margin-bottom:24px">
-        <div class="stat-card"><div class="stat-label">Contracts Monitored</div><div class="stat-value blue">6</div><div class="stat-sub">All active contracts</div></div>
-        <div class="stat-card"><div class="stat-label">Alerts ≥ 80%</div><div class="stat-value ${alertCount>0?"red":"green"}">${alertCount}</div><div class="stat-sub">Require attention</div></div>
-        <div class="stat-card"><div class="stat-label">Total YTD Procedures</div><div class="stat-value">${CONTRACTS.reduce((s,c)=>s+c.ytd,0)}</div><div class="stat-sub">Across all contracts</div></div>
+function renderNetworkList() {
+  document.getElementById("screen-network").innerHTML = `
+    <div class="screen-header">
+      <div class="screen-header-top">
+        <div><div class="screen-title">Provider Network</div><div class="screen-sub">${PROVIDERS.length} providers — contracted, in negotiation, and leads</div></div>
+        <button class="btn-sm primary" onclick="alert('Add Provider — validates against NZ HPI in Phase 2')">+ Add Provider</button>
       </div>
-      <div class="util-grid">
-        ${cards.map(c => `
-          <div class="util-card ${c.level}">
-            <div class="util-card-top"><div><div class="util-card-title">${c.provider.replace(" Centre","").replace(" Hospital","")}</div><div class="util-card-sub">${c.procedure} · ${c.id}</div></div><span class="util-alert-badge ${c.level}">${c.level.toUpperCase()}</span></div>
-            <div class="util-progress-wrap"><div class="util-progress-bar"><div class="util-progress-fill ${c.level}" style="width:${c.pct}%"></div></div><div class="util-progress-labels"><span class="util-ytd">${c.ytd} used</span><span class="util-cap">of ${c.cap} cap (${c.pct}%)</span></div></div>
-            <div class="util-meta"><div class="util-kv"><div class="util-k">Annual Run Rate</div><div class="util-v ${c.runRate>c.cap?"red":""}">${c.runRate} projected</div></div><div class="util-kv"><div class="util-k">Weeks to Cap</div><div class="util-v ${c.weeksLeft&&c.weeksLeft<8?"red":c.weeksLeft&&c.weeksLeft<16?"amber":""}">${c.weeksLeft?c.weeksLeft+"w":"—"}</div></div><div class="util-kv"><div class="util-k">Model</div><div class="util-v" style="font-size:11px">${c.model}</div></div><div class="util-kv"><div class="util-k">Network</div><div class="util-v" style="font-size:11px">${c.networkTier.toUpperCase()}</div></div></div>
-            ${c.level!=="ok"?`<button class="btn-sm outline" style="width:100%;margin-top:4px" onclick="showScreen('studio')">${c.pct>=90?"Amend Cap in AI Studio":"Review in AI Studio"}</button>`:""}
-          </div>`).join("")}
+    </div>
+    <div class="screen-body">
+      <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+        <div class="stat-card"><div class="stat-label">Contracted</div><div class="stat-value green">${PROVIDERS.filter(p=>p.status==="contracted").length}</div><div class="stat-sub">Active network</div></div>
+        <div class="stat-card"><div class="stat-label">In Negotiation</div><div class="stat-value amber">${PROVIDERS.filter(p=>p.status==="in-negotiation").length}</div><div class="stat-sub">Contract in progress</div></div>
+        <div class="stat-card"><div class="stat-label">Leads</div><div class="stat-value blue">${PROVIDERS.filter(p=>p.status==="lead").length}</div><div class="stat-sub">Prospective</div></div>
+        <div class="stat-card"><div class="stat-label">Total Contracts</div><div class="stat-value">${PROVIDERS.reduce((s,p)=>s+p.contracts,0)}</div><div class="stat-sub">Across network</div></div>
+      </div>
+      <div class="network-layout">
+        <div class="network-left">
+          <div class="section-card" style="overflow:hidden">
+            <div class="section-card-header"><span class="section-card-title">All Providers</span><span class="section-card-count">${PROVIDERS.length} total</span></div>
+            ${PROVIDERS.map(p => `
+              <div class="provider-row ${selectedProviderId===p.id?"selected":""}" onclick="selectProvider('${p.id}')">
+                <div class="provider-row-info">
+                  <div class="provider-row-name">${p.name}</div>
+                  <div class="provider-row-sub">${p.city} · ${p.type}</div>
+                </div>
+                <div class="provider-row-meta">
+                  <span class="tier-badge tier-${p.tier}">${p.tier.charAt(0).toUpperCase()+p.tier.slice(1)}</span>
+                  <span class="status-pill ${p.status==="contracted"?"active":p.status==="in-negotiation"?"pending":"draft"}" style="font-size:10px">${p.status==="contracted"?"Contracted":p.status==="in-negotiation"?"Negotiating":"Lead"}</span>
+                  ${p.contracts>0?`<span style="font-size:11px;color:var(--text-muted)">${p.contracts}c</span>`:""}
+                </div>
+              </div>`).join("")}
+          </div>
+        </div>
+        <div class="network-right" id="providerDetail">
+          <div class="section-card" style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px">Select a provider to view details</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function selectProvider(id) {
+  selectedProviderId = id;
+  const p = PROVIDERS.find(x => x.id === id);
+  if (!p) return;
+  document.querySelectorAll(".provider-row").forEach(r =>
+    r.classList.toggle("selected", r.getAttribute("onclick")?.includes(`'${id}'`))
+  );
+  const relatedContracts = CONTRACTS.filter(c => c.provider === p.name);
+  const contractsHtml = relatedContracts.length > 0
+    ? relatedContracts.map(c => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px"><span style="font-family:monospace;color:var(--blue);font-weight:600">${c.id}</span><span style="color:var(--text-muted);flex:1;margin:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.procedure}</span><span class="status-pill ${c.status.toLowerCase()}" style="font-size:10px">${c.status}</span></div>`).join("")
+    : `<div style="font-size:12.5px;color:var(--text-muted);padding:8px 0">No active contracts — ${p.status==="lead"?"start contracting below":"use AI Studio to draft"}</div>`;
+
+  document.getElementById("providerDetail").innerHTML = `
+    <div class="detail-panel">
+      <div class="detail-header">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between">
+          <div><div class="detail-title">${p.name}</div><div class="detail-sub">${p.id} · ${p.city} · ${p.type}</div></div>
+          <span class="tier-badge tier-${p.tier}" style="font-size:12px;padding:4px 12px">${p.tier.charAt(0).toUpperCase()+p.tier.slice(1)}</span>
+        </div>
+      </div>
+      <div class="detail-section"><div class="detail-label">Status</div><span class="status-pill ${p.status==="contracted"?"active":p.status==="in-negotiation"?"pending":"draft"}">${p.status==="contracted"?"Contracted":p.status==="in-negotiation"?"In Negotiation":"Lead"}</span></div>
+      <div class="detail-section"><div class="detail-label">Primary Contact</div><div class="detail-value">${p.contact}</div></div>
+      <div class="detail-section"><div class="detail-label">Contracts (${relatedContracts.length})</div><div>${contractsHtml}</div></div>
+      <div class="detail-section" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-sm primary" onclick="showScreen('studio')">Start Contracting in AI Studio</button>
+        ${relatedContracts.length>0?`<button class="btn-sm outline" onclick="showScreen('contracts')">View All Contracts</button>`:""}
       </div>
     </div>`;
 }
@@ -507,96 +580,68 @@ function toggleClause(id) {
   renderedScreens.add("clauses");
 }
 
-// ─── Screen 7: E-Signature ────────────────────────────────────────────────────
+// ─── Screen: Template Repository ─────────────────────────────────────────────
 
-function renderESignature() {
-  const statusLabel = { "awaiting-provider": "Awaiting Provider", "awaiting-insurer": "Awaiting Insurer", "completed": "Completed" };
-  const pending = ESIG_DOCS.filter(d => d.status !== "completed");
-  const done    = ESIG_DOCS.filter(d => d.status === "completed");
-
-  document.getElementById("screen-esignature").innerHTML = `
+function renderTemplateRepository() {
+  document.getElementById("screen-templates").innerHTML = `
     <div class="screen-header">
       <div class="screen-header-top">
-        <div><div class="screen-title">E-Signature</div><div class="screen-sub">DocuSign-integrated signing queue — ${pending.length} awaiting signature, ${done.length} completed</div></div>
+        <div><div class="screen-title">Template Repository</div><div class="screen-sub">${TEMPLATES.length} standard contract templates — click to explore model, rates, and clauses</div></div>
+        <button class="btn-sm primary" onclick="alert('Add Template — available in Phase 2 with legal workflow')">+ New Template</button>
       </div>
     </div>
     <div class="screen-body">
-      <div class="esig-layout">
-        <div>
-          ${pending.length>0?`<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:10px">Awaiting Signature (${pending.length})</div>`:""}
-          <div class="esig-list">
-            ${ESIG_DOCS.map(doc => `
-              <div class="esig-card ${selectedEsigId===doc.id?"selected":""}" onclick="selectEsig('${doc.id}')">
-                <div class="esig-card-header">
-                  <div><div class="esig-card-title">${doc.provider}</div><div class="esig-card-sub">${doc.type} · ${doc.contractId} · ${doc.procedure}</div></div>
-                  <span class="esig-status-pill esig-status-${doc.status}">${statusLabel[doc.status]}</span>
+      <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+        <div class="stat-card"><div class="stat-label">Templates</div><div class="stat-value blue">${TEMPLATES.length}</div><div class="stat-sub">Ready to deploy</div></div>
+        <div class="stat-card"><div class="stat-label">Times Used</div><div class="stat-value">${TEMPLATES.reduce((s,t)=>s+t.usedIn,0)}</div><div class="stat-sub">In active contracts</div></div>
+        <div class="stat-card"><div class="stat-label">Models</div><div class="stat-value">4</div><div class="stat-sub">Tiered, FFS, Matrix, Staircase</div></div>
+        <div class="stat-card"><div class="stat-label">Avg Clauses</div><div class="stat-value">${Math.round(TEMPLATES.reduce((s,t)=>s+t.clauses,0)/TEMPLATES.length)}</div><div class="stat-sub">Per template</div></div>
+      </div>
+      <div class="template-grid">
+        ${TEMPLATES.map(t => `
+          <div class="template-card ${expandedTemplateId===t.id?"expanded":""}" onclick="toggleTemplate('${t.id}')">
+            <div class="template-card-header">
+              <div class="template-card-meta">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                  <span class="model-chip ${t.model.toLowerCase()}">${t.model}</span>
+                  <span style="font-size:11px;color:var(--text-muted);font-family:monospace">${t.id} · Bucket ${t.bucket}</span>
                 </div>
-                <div class="esig-card-body">
-                  <div class="esig-signers">
-                    ${doc.signers.map(s => `<div class="esig-signer"><div class="esig-signer-dot ${s.signed?"signed":"pending"}"></div><div class="esig-signer-name">${s.name}</div><div class="esig-signer-ts">${s.signed?s.signedAt:"Pending"}</div></div>`).join("")}
-                  </div>
-                </div>
-              </div>`).join("")}
-          </div>
-        </div>
-        <div class="esig-detail">
-          ${selectedEsigId ? renderEsigEnvelope(ESIG_DOCS.find(d=>d.id===selectedEsigId)) : `<div class="section-card" style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px">Select a document to view the signing envelope</div>`}
-        </div>
+                <div class="template-card-title">${t.name}</div>
+                <div class="template-card-sub">${t.procedures.join(" · ")}</div>
+              </div>
+              <div class="clause-expand-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </div>
+            <div class="template-card-stats">
+              <div class="template-stat"><span class="template-stat-label">Base Rate</span><span class="template-stat-value">$${t.baseRate.toLocaleString()}</span></div>
+              <div class="template-stat"><span class="template-stat-label">Clauses</span><span class="template-stat-value">${t.clauses}</span></div>
+              <div class="template-stat"><span class="template-stat-label">Used In</span><span class="template-stat-value">${t.usedIn} contract${t.usedIn!==1?"s":""}</span></div>
+              <div class="template-stat"><span class="template-stat-label">Updated</span><span class="template-stat-value">${t.lastUpdated}</span></div>
+            </div>
+            ${expandedTemplateId===t.id?`
+            <div class="template-card-body">
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px">Pricing</div>
+              <div style="font-size:13px;color:var(--text);margin-bottom:12px;line-height:1.6">Base rate <strong>$${t.baseRate.toLocaleString()} NZD</strong> · ${t.model} model · tier multipliers applied at contracting:
+                <span style="color:var(--purple);font-weight:600"> Platinum 1.2×</span> ·
+                <span style="color:var(--amber);font-weight:600"> Gold 1.1×</span> ·
+                <span style="color:var(--text-muted);font-weight:600"> Silver 1.05×</span> ·
+                <span style="color:var(--text-muted)"> Standard 1.0×</span>
+              </div>
+              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px">Clauses</div>
+              <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">${t.clauses} pre-approved clauses covering indemnity, termination, confidentiality, performance, dispute resolution, and reporting.</div>
+              <button class="btn-sm primary" onclick="event.stopPropagation();showScreen('studio')">Use This Template in AI Studio</button>
+            </div>`:""}
+          </div>`).join("")}
       </div>
     </div>`;
 }
 
-function renderEsigEnvelope(doc) {
-  if (!doc) return "";
-  const mySigner = doc.signers.find(s => s.name === "Sarah Mitchell");
-  const canSign  = mySigner && !mySigner.signed;
-  return `
-    <div class="esig-envelope">
-      <div class="esig-envelope-header">
-        <div class="esig-envelope-logo">DocuSign</div>
-        <div class="esig-envelope-sub">Electronic Signature Platform · NZ Health Insurer CLM Integration</div>
-      </div>
-      <div class="esig-doc-preview">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:12px">Document Preview</div>
-        <div class="esig-doc-page">
-          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;text-align:center">${doc.type} — ${doc.contractId}</div>
-          <div style="margin-bottom:8px"><strong>Provider:</strong> ${doc.provider}</div>
-          <div style="margin-bottom:8px"><strong>Procedure:</strong> ${doc.procedure}</div>
-          <div style="margin-bottom:8px"><strong>Document Type:</strong> ${doc.type}</div>
-          <div style="margin-bottom:16px"><strong>Sent:</strong> ${doc.sentAt}</div>
-          <div style="font-size:11.5px;color:var(--text-muted)">This document has been prepared in accordance with the NZ Contract Law and CoFI Act requirements. Both parties must sign to activate this agreement.</div>
-          ${doc.signers.map(s => `
-            <div class="esig-sign-zone" style="margin-top:16px">
-              <div><div class="esig-sign-label">${s.role}</div><div style="font-size:11px;color:var(--text-muted);margin-top:3px">${s.name}</div></div>
-              ${s.signed
-                ? `<div class="esig-signed-stamp">✓ Signed ${s.signedAt}</div>`
-                : (s.name==="Sarah Mitchell" && canSign
-                   ? `<button class="btn-sm primary" onclick="signDocument('${doc.id}')">Sign Now</button>`
-                   : `<span style="font-size:11px;color:var(--amber);font-weight:600">Awaiting signature</span>`)}
-            </div>`).join("")}
-        </div>
-      </div>
-    </div>`;
-}
-
-function selectEsig(id) {
-  selectedEsigId = id;
-  renderedScreens.delete("esignature");
-  renderESignature();
-  renderedScreens.add("esignature");
-}
-
-function signDocument(esigId) {
-  const doc = ESIG_DOCS.find(d => d.id === esigId);
-  const signer = doc?.signers.find(s => s.name === "Sarah Mitchell" && !s.signed);
-  if (signer) {
-    signer.signed = true;
-    signer.signedAt = new Date().toLocaleString("en-NZ", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
-    if (doc.signers.every(s => s.signed)) { doc.status = "completed"; doc.completedAt = signer.signedAt; }
-  }
-  renderedScreens.delete("esignature");
-  renderESignature();
-  renderedScreens.add("esignature");
+function toggleTemplate(id) {
+  expandedTemplateId = expandedTemplateId === id ? null : id;
+  renderedScreens.delete("templates");
+  renderTemplateRepository();
+  renderedScreens.add("templates");
 }
 
 // ─── Screen 8: Negotiation & Redlining ───────────────────────────────────────
@@ -690,196 +735,59 @@ function resolveChange(negId, changeId, resolution) {
   renderedScreens.add("negotiation");
 }
 
-// ─── Screen 9: Obligations & SLA ─────────────────────────────────────────────
+// ─── Screen: Integrations & API ──────────────────────────────────────────────
 
-function renderObligations() {
-  const breachCount   = OBLIGATIONS.filter(o => o.status === "breach").length;
-  const atRiskCount   = OBLIGATIONS.filter(o => o.status === "at-risk").length;
-  const onTrackCount  = OBLIGATIONS.filter(o => o.status === "on-track").length;
-
-  document.getElementById("screen-obligations").innerHTML = `
+function renderIntegrations() {
+  document.getElementById("screen-integrations").innerHTML = `
     <div class="screen-header">
       <div class="screen-header-top">
-        <div><div class="screen-title">Obligations & SLA Tracking</div><div class="screen-sub">Post-signature performance monitoring across all active contracts · Click a card for history</div></div>
+        <div><div class="screen-title">Integrations & API</div><div class="screen-sub">External system connections — data flows in and out of the CLM automatically</div></div>
       </div>
     </div>
     <div class="screen-body">
-      <div class="stat-row" style="grid-template-columns:repeat(3,1fr);max-width:640px;margin-bottom:24px">
-        <div class="stat-card"><div class="stat-label">On Track</div><div class="stat-value green">${onTrackCount}</div><div class="stat-sub">Meeting targets</div></div>
-        <div class="stat-card"><div class="stat-label">At Risk</div><div class="stat-value amber">${atRiskCount}</div><div class="stat-sub">Monitor closely</div></div>
-        <div class="stat-card"><div class="stat-label">In Breach</div><div class="stat-value red">${breachCount}</div><div class="stat-sub">Action required</div></div>
+      <div class="stat-row" style="grid-template-columns:repeat(3,1fr);max-width:480px;margin-bottom:24px">
+        <div class="stat-card"><div class="stat-label">Connected</div><div class="stat-value green">${INTEGRATIONS.filter(i=>i.status==="connected").length}</div><div class="stat-sub">Live integrations</div></div>
+        <div class="stat-card"><div class="stat-label">Disconnected</div><div class="stat-value amber">${INTEGRATIONS.filter(i=>i.status==="disconnected").length}</div><div class="stat-sub">Requires setup</div></div>
+        <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">${INTEGRATIONS.length}</div><div class="stat-sub">Configured</div></div>
       </div>
-      <div class="obl-grid">
-        ${OBLIGATIONS.map(obl => {
-          const isExpanded = selectedObligationId === obl.id;
-          const max = Math.max(...obl.history.map(h=>h.value), obl.target) * 1.15;
-          const sparkBars = obl.history.map(h => {
-            const pct = Math.round((h.value / max) * 44);
-            const isGood = obl.type==="Quality" ? h.value <= obl.target : (obl.status==="on-track" ? true : h.value <= obl.target * 1.1);
-            const color = h.value > obl.target && obl.type!=="Quality" ? "var(--amber)" : h.value > obl.target ? "var(--red)" : "var(--green)";
-            return `<div class="spark-col"><div class="spark-bar" style="height:${pct}px;background:${color};min-height:4px"></div><div class="spark-label">${h.month}</div></div>`;
-          }).join("");
-          return `
-            <div class="obl-card ${obl.status} ${isExpanded?"expanded":""}" onclick="selectObligation('${obl.id}')">
-              <div class="obl-card-header">
-                <div>
-                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="obl-type-badge">${obl.type}</span><span style="font-size:11px;color:var(--text-muted);font-family:monospace">${obl.contractId}</span></div>
-                  <div class="obl-card-title">${obl.provider}</div>
-                  <div class="obl-card-sub">${obl.metric}</div>
+      <div class="integrations-grid">
+        ${INTEGRATIONS.map(int => `
+          <div class="integration-card">
+            <div class="integration-card-header">
+              <div>
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
+                  <div class="integration-status-dot ${int.status}"></div>
+                  <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:${int.status==="connected"?"#047857":"#b45309"}">${int.status==="connected"?"Connected":"Disconnected"}</span>
                 </div>
-                <span class="obl-status-${obl.status}">${obl.status.replace("-"," ").replace(/\b\w/g,l=>l.toUpperCase())}</span>
+                <div class="integration-name">${int.name}</div>
+                <div class="integration-category">${int.category}</div>
               </div>
-              <div class="obl-card-body">
-                <div class="obl-metric-row">
-                  <div class="obl-current ${obl.status}">${obl.current}</div>
-                  <div class="obl-target">/ ${obl.target} ${obl.unit} target</div>
-                </div>
-                <div style="display:flex;align-items:center;justify-content:space-between">
-                  <div class="obl-trend">${obl.trend}</div>
-                  <div style="font-size:11px;color:var(--text-muted)">Reported ${obl.lastReported}</div>
-                </div>
-              </div>
-              <div class="obl-history">
-                <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">3-Month History</div>
-                <div class="spark-row">${sparkBars}</div>
-                <div style="font-size:11px;color:var(--blue);margin-top:4px">Target: ${obl.target} ${obl.unit}</div>
-              </div>
-            </div>`;
-        }).join("")}
-      </div>
-    </div>`;
-}
-
-function selectObligation(id) {
-  selectedObligationId = selectedObligationId === id ? null : id;
-  renderedScreens.delete("obligations");
-  renderObligations();
-  renderedScreens.add("obligations");
-}
-
-// ─── Screen 10: Pricing Schedule ─────────────────────────────────────────────
-
-function renderPricingSchedule() {
-  const multipliers = [
-    { name: "Out of Hours", value: "1.25×", desc: "Procedures performed outside standard hours (6am–8pm)", type: "above" },
-    { name: "Bilateral",    value: "1.70×", desc: "Both sides performed in same session", type: "above" },
-    { name: "Emergency",    value: "1.50×", desc: "Unplanned emergency presentation", type: "above" },
-    { name: "Repeat <30d",  value: "0.80×", desc: "Same procedure within 30 days of prior claim", type: "below" },
-  ];
-
-  const selected = selectedPricingContractId ? CONTRACTS.find(c => c.id === selectedPricingContractId) : null;
-
-  document.getElementById("screen-pricing").innerHTML = `
-    <div class="screen-header">
-      <div class="screen-header-top">
-        <div><div class="screen-title">Pricing Schedule</div><div class="screen-sub">Rules Engine — visual rate explorer across all contracts and multiplier combinations</div></div>
-        <button class="btn-sm outline" onclick="showScreen('studio')">Evaluate a Claim in AI Studio</button>
-      </div>
-    </div>
-    <div class="screen-body">
-      <div class="pricing-layout">
-        <div class="pricing-left">
-          <div class="pricing-table-wrap">
-            <div class="pricing-row header">
-              <div class="th">ID</div><div class="th">Provider</div><div class="th">Model</div><div class="th">Cap</div><div class="th">Status</div>
-            </div>
-            ${CONTRACTS.map(c => `
-              <div class="pricing-row ${selectedPricingContractId===c.id?"selected":""}" onclick="selectPricingContract('${c.id}')">
-                <div class="td mono">${c.id}</div>
-                <div class="td" style="font-size:12.5px">${c.provider.replace(" Centre","").replace(" Hospital","")}<div style="font-size:11px;color:var(--text-muted)">${c.procedure}</div></div>
-                <div class="td"><span class="model-chip ${c.model.toLowerCase()}">${c.model}</span></div>
-                <div class="td muted">${c.cap}</div>
-                <div class="td"><span class="status-pill ${c.status.toLowerCase()}">${c.status}</span></div>
-              </div>`).join("")}
-          </div>
-
-          <div class="section-card">
-            <div class="section-card-header"><span class="section-card-title">Claim Multipliers</span><span class="section-card-count">Multiplicative — stack on top of base rate</span></div>
-            <div style="padding:16px 20px">
-              <div class="multiplier-grid">
-                ${multipliers.map(m => `
-                  <div class="multiplier-card">
-                    <div class="multiplier-name">${m.name}</div>
-                    <div class="multiplier-value ${m.type}">${m.value}</div>
-                    <div class="multiplier-desc">${m.desc}</div>
-                  </div>`).join("")}
-              </div>
-              <div style="margin-top:12px;padding:10px 12px;background:rgba(37,99,235,0.05);border:1px solid rgba(37,99,235,0.15);border-radius:8px;font-size:12px;color:var(--text-muted);line-height:1.6">
-                Multipliers are <strong>multiplicative</strong> — an out-of-hours bilateral procedure at $5,000 base = $5,000 × 1.25 × 1.70 = <strong>$10,625</strong>. Evaluated by the Rules Engine, never calculated by the AI.
+              <div class="integration-card-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
               </div>
             </div>
+            <div class="integration-desc">${int.description}</div>
+            <div class="integration-footer">
+              <span style="font-size:11px;color:var(--text-muted)">Last sync: ${int.lastSync}</span>
+              <button class="btn-sm ${int.status==="connected"?"outline":"primary"}" style="font-size:11px;padding:4px 10px" onclick="alert('${int.status==="connected"?"Configure "+int.name+" — settings in Phase 2":"Connect "+int.name+" — setup wizard in Phase 2"}')">
+                ${int.status==="connected"?"Configure":"Connect"}
+              </button>
+            </div>
+          </div>`).join("")}
+      </div>
+      <div style="margin-top:20px">
+        <div class="section-card">
+          <div class="section-card-header"><span class="section-card-title">API Access</span><span class="section-card-count">REST + FHIR R4</span></div>
+          <div style="padding:18px 20px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px">Base URL</div><div style="font-family:monospace;font-size:12px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--blue)">https://clm-api.healthinsurer.co.nz/v1</div></div>
+            <div><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px">Authentication</div><div style="font-family:monospace;font-size:12px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text-muted)">OAuth 2.0 / SAML 2.0</div></div>
+            <div><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px">Data Standard</div><div style="font-size:13px;color:var(--text)">FHIR R4 · NZ Base IG · HL7</div></div>
+            <div><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px">Hosting</div><div style="font-size:13px;color:var(--text)">AWS Sydney · NZ data residency ✓</div></div>
           </div>
-        </div>
-
-        <div class="pricing-right">
-          ${selected ? renderPricingDetail(selected) : `<div class="section-card" style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px">Select a contract to explore its rate schedule</div>`}
+          <div style="padding:0 20px 16px;display:flex;gap:6px;flex-wrap:wrap"><span class="tag">CoFI Act ✓</span><span class="tag">NZ Privacy Act ✓</span><span class="tag">FHIR R4 ✓</span><span class="tag">AWS Sydney ✓</span><span class="tag">WCAG 2.1 AA ✓</span></div>
         </div>
       </div>
     </div>`;
-}
-
-function renderPricingDetail(c) {
-  let rateRows = "";
-  if (c.model === "TIERED") {
-    rateRows = c.tiers.map((t,i) => `<div class="rate-row"><span class="rate-tier">Tier ${i+1}: ${t.from}–${t.to??"∞"} procedures</span><span class="rate-amount">$${t.rate.toLocaleString()} NZD</span></div>`).join("");
-  } else if (c.model === "FFS") {
-    rateRows = `<div class="rate-row"><span class="rate-tier">Fixed rate (FFS)</span><span class="rate-amount">$${c.rate.toLocaleString()} NZD</span></div>`;
-  } else if (c.model === "STAIRCASE") {
-    const flipped = c.ytd >= c.threshold;
-    rateRows = `
-      <div class="rate-row ${!flipped?"rate-row-active":""}"><span class="rate-tier">Claims 1–${c.threshold} (pre-threshold)</span><span class="rate-amount ${flipped?"rate-crossed":""}">$${c.rateBefore.toLocaleString()}</span></div>
-      <div class="rate-row ${flipped?"rate-row-active":""}"><span class="rate-tier">Claims ${c.threshold+1}+ (post-threshold)</span><span class="rate-amount">$${c.rateAfter.toLocaleString()}</span></div>
-      <div class="staircase-status ${flipped?"flipped":""}">${flipped?"⚡ Threshold CROSSED — "+c.ytd+" YTD. Rate locked at $"+c.rateAfter.toLocaleString()+" for remainder of year.":c.ytd+" of "+c.threshold+" procedures — threshold not reached"}</div>`;
-  } else if (c.model === "MATRIX") {
-    rateRows = Object.entries(c.matrix).map(([k,v]) => { const [f,cx]=k.split(":"); return `<div class="rate-row"><span class="rate-tier">Facility ${f} · ${cx} complexity</span><span class="rate-amount">$${v.toLocaleString()}</span></div>`; }).join("");
-  }
-
-  const ytdCost = c.model==="FFS" ? c.ytd*c.rate
-    : c.model==="TIERED" ? c.tiers.reduce((sum,t) => {
-        const from = t.from - 1;
-        const to   = Math.min(c.ytd, t.to ?? Infinity);
-        const vol  = Math.max(0, to - from);
-        return sum + vol * t.rate;
-      }, 0)
-    : c.model==="STAIRCASE" ? (c.ytd<=c.threshold ? c.ytd*c.rateBefore : c.threshold*c.rateBefore+(c.ytd-c.threshold)*c.rateAfter)
-    : 0;
-
-  return `
-    <div class="section-card">
-      <div class="section-card-header">
-        <div><div style="font-size:13.5px;font-weight:700;color:var(--text)">${c.provider.replace(" Centre","").replace(" Hospital","")}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${c.id} · ${c.procedure}</div></div>
-        <span class="model-chip ${c.model.toLowerCase()}">${c.model}</span>
-      </div>
-      <div style="padding:16px 20px">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px">Rate Schedule</div>
-        <div class="rate-table">${rateRows}</div>
-      </div>
-      <div style="padding:0 20px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
-          <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">YTD Volume</div>
-          <div style="font-size:20px;font-weight:800;color:var(--text)">${c.ytd}<span style="font-size:12px;font-weight:400;color:var(--text-muted)"> / ${c.cap} cap</span></div>
-        </div>
-        <div style="padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
-          <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">YTD Cost Estimate</div>
-          <div style="font-size:20px;font-weight:800;color:var(--blue)">$${Math.round(ytdCost).toLocaleString()}</div>
-        </div>
-      </div>
-      <div style="padding:0 20px 16px">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px">Network & Period</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <span class="network-tier-badge tier-${c.networkTier}">${c.networkTier.toUpperCase()} NETWORK</span>
-          <span class="value-pill" style="font-size:12px">Expires ${c.expiry}</span>
-          <span class="value-pill" style="font-size:12px">${c.city}</span>
-        </div>
-      </div>
-    </div>`;
-}
-
-function selectPricingContract(id) {
-  selectedPricingContractId = id;
-  renderedScreens.delete("pricing");
-  renderPricingSchedule();
-  renderedScreens.add("pricing");
 }
 
 // ─── Contract Preview ─────────────────────────────────────────────────────────
