@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CLM System — Provider Contract Management</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=2" />
 </head>
 <body>
 <div class="app">
@@ -115,7 +115,8 @@
       <div class="screen" id="screen-dashboard"></div>
 
       <!-- AI Voice Assistant -->
-      <div class="screen studio-layout" id="screen-studio">
+      <div class="screen" id="screen-studio">
+        <div class="studio-layout">
         <div class="chat-panel">
           <div class="chat-messages" id="chatMessages">
             <div class="message ai">
@@ -179,6 +180,7 @@
             <div class="contract-card" id="contractCard" style="display:none"></div>
           </div>
         </div>
+        </div>
       </div>
 
       <div class="screen" id="screen-network"></div>
@@ -201,6 +203,6 @@
   </div>
 
 </div>
-<script src="app.js"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>

@@ -191,9 +191,14 @@ const INTEGRATIONS = [
 const renderedScreens = new Set(["studio"]);
 
 function showScreen(name) {
-  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".screen").forEach(s => {
+    s.classList.remove("active");
+    s.style.display = "none";
+  });
   document.querySelectorAll(".nav-item").forEach(t => t.classList.remove("active"));
-  document.getElementById(`screen-${name}`).classList.add("active");
+  const target = document.getElementById(`screen-${name}`);
+  target.classList.add("active");
+  target.style.display = name === "studio" ? "flex" : "flex";
   document.querySelector(`.nav-item[data-screen="${name}"]`)?.classList.add("active");
 
   if (!renderedScreens.has(name)) {
