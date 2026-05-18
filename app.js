@@ -783,65 +783,142 @@ function toggleClause(id) {
 // ─── Screen: Template Repository ─────────────────────────────────────────────
 
 function renderTemplateRepository() {
+  const categories = ["All", ...new Set(TEMPLATES.map(t => t.category))];
+  const filtered = templateCategory === "All" ? TEMPLATES : TEMPLATES.filter(t => t.category === templateCategory);
+  const selected = selectedTemplateId ? TEMPLATES.find(t => t.id === selectedTemplateId) : null;
+
   document.getElementById("screen-templates").innerHTML = `
     <div class="screen-header">
       <div class="screen-header-top">
-        <div><div class="screen-title">Template Repository</div><div class="screen-sub">${TEMPLATES.length} standard contract templates — click to explore model, rates, and clauses</div></div>
-        <button class="btn-sm primary" onclick="alert('Add Template — available in Phase 2 with legal workflow')">+ New Template</button>
+        <div><div class="screen-title">Template Repository</div><div class="screen-sub">${TEMPLATES.length} contract type templates — select a category, then click to view full detail</div></div>
+        <button class="btn-sm primary" onclick="alert('New Template — available in Phase 2 with legal workflow')">+ New Template</button>
       </div>
     </div>
     <div class="screen-body">
-      <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
-        <div class="stat-card"><div class="stat-label">Templates</div><div class="stat-value blue">${TEMPLATES.length}</div><div class="stat-sub">Ready to deploy</div></div>
-        <div class="stat-card"><div class="stat-label">Times Used</div><div class="stat-value">${TEMPLATES.reduce((s,t)=>s+t.usedIn,0)}</div><div class="stat-sub">In active contracts</div></div>
-        <div class="stat-card"><div class="stat-label">Models</div><div class="stat-value">4</div><div class="stat-sub">Tiered, FFS, Matrix, Staircase</div></div>
-        <div class="stat-card"><div class="stat-label">Avg Clauses</div><div class="stat-value">${Math.round(TEMPLATES.reduce((s,t)=>s+t.clauses,0)/TEMPLATES.length)}</div><div class="stat-sub">Per template</div></div>
-      </div>
-      <div class="template-grid">
-        ${TEMPLATES.map(t => `
-          <div class="template-card ${expandedTemplateId===t.id?"expanded":""}" onclick="toggleTemplate('${t.id}')">
-            <div class="template-card-header">
-              <div class="template-card-meta">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-                  <span class="model-chip ${t.model.toLowerCase()}">${t.model}</span>
-                  <span style="font-size:11px;color:var(--text-muted);font-family:monospace">${t.id} · Bucket ${t.bucket}</span>
+      <div class="template-layout">
+        <div class="template-sidebar">
+          ${categories.map(cat => {
+            const count = cat === "All" ? TEMPLATES.length : TEMPLATES.filter(t=>t.category===cat).length;
+            return `<button class="template-cat-btn ${templateCategory===cat?"active":""}" onclick="setTemplateCategory('${cat}')"><span>${cat}</span><span class="template-cat-count">${count}</span></button>`;
+          }).join("")}
+          <div style="margin-top:14px;padding:10px;background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:6px;font-size:11.5px;color:var(--blue);line-height:1.6">
+            <strong>${TEMPLATES.reduce((s,t)=>s+t.usedIn,0)} deployments</strong><br><span style="color:var(--text-muted)">across active contracts</span>
+          </div>
+        </div>
+        <div class="template-main">
+          ${selected ? `
+            <div class="template-detail">
+              <div class="template-detail-header">
+                <div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                    <span class="model-chip ${selected.model.toLowerCase()}">${selected.model}</span>
+                    <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">${selected.id}</span>
+                  </div>
+                  <div class="template-detail-title">${selected.name}</div>
                 </div>
-                <div class="template-card-title">${t.name}</div>
-                <div class="template-card-sub">${t.procedures.join(" · ")}</div>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <button class="btn-sm primary" onclick="showScreen('studio')">Use as Template</button>
+                  <button class="btn-sm outline" onclick="selectedTemplateId=null;renderTemplateRepository()">← Back</button>
+                </div>
               </div>
-              <div class="clause-expand-icon">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              <div class="template-detail-body">
+                <div class="template-detail-section">
+                  <div class="template-detail-section-title">Description</div>
+                  <p style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:10px">${selected.description}</p>
+                  <div style="font-size:12px;color:var(--text-muted)">Applicable to: <strong style="color:var(--text)">${selected.applicableTo}</strong></div>
+                </div>
+                <div class="template-detail-section">
+                  <div class="template-detail-section-title">Tags</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:4px">${selected.tags.map(t=>`<span class="template-tag">${t}</span>`).join("")}</div>
+                </div>
+                <div class="template-detail-section">
+                  <div class="template-detail-section-title">Pricing Model</div>
+                  <div style="background:var(--surface-hover);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-size:12.5px;line-height:1.7">
+                    <div style="margin-bottom:6px"><strong>Model:</strong> ${selected.model} · <strong>Base Rate:</strong> $${selected.baseRate.toLocaleString()} NZD</div>
+                    <div style="color:var(--text-muted)">${selected.pricingNote}</div>
+                  </div>
+                </div>
+                <div class="template-detail-section">
+                  <div class="template-detail-section-title">Pre-Approved Clauses (${selected.clauses})</div>
+                  <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+                    ${selected.clauseList.map((cl,i) => `
+                      <div class="clause-list-item" style="padding:8px 14px">
+                        <div class="clause-list-num">${i+1}</div>
+                        <div style="font-size:12.5px;color:var(--text)">${cl}</div>
+                      </div>`).join("")}
+                  </div>
+                </div>
+                <div class="template-detail-section">
+                  <div style="display:flex;gap:8px">
+                    <button class="btn-sm primary" onclick="showScreen('studio')">Use as Template in AI Studio</button>
+                    <button class="btn-sm outline" onclick="showScreen('clauses')">View Clause Library</button>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="template-card-stats">
-              <div class="template-stat"><span class="template-stat-label">Base Rate</span><span class="template-stat-value">$${t.baseRate.toLocaleString()}</span></div>
-              <div class="template-stat"><span class="template-stat-label">Clauses</span><span class="template-stat-value">${t.clauses}</span></div>
-              <div class="template-stat"><span class="template-stat-label">Used In</span><span class="template-stat-value">${t.usedIn} contract${t.usedIn!==1?"s":""}</span></div>
-              <div class="template-stat"><span class="template-stat-label">Updated</span><span class="template-stat-value">${t.lastUpdated}</span></div>
-            </div>
-            ${expandedTemplateId===t.id?`
-            <div class="template-card-body">
-              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px">Pricing</div>
-              <div style="font-size:13px;color:var(--text);margin-bottom:12px;line-height:1.6">Base rate <strong>$${t.baseRate.toLocaleString()} NZD</strong> · ${t.model} model · tier multipliers applied at contracting:
-                <span style="color:var(--purple);font-weight:600"> Platinum 1.2×</span> ·
-                <span style="color:var(--amber);font-weight:600"> Gold 1.1×</span> ·
-                <span style="color:var(--text-muted);font-weight:600"> Silver 1.05×</span> ·
-                <span style="color:var(--text-muted)"> Standard 1.0×</span>
+          ` : `
+            <div>
+              <div class="template-search">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-muted)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" placeholder="Search templates..." oninput="filterTemplates(this.value)" />
               </div>
-              <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px">Clauses</div>
-              <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px">${t.clauses} pre-approved clauses covering indemnity, termination, confidentiality, performance, dispute resolution, and reporting.</div>
-              <button class="btn-sm primary" onclick="event.stopPropagation();showScreen('studio')">Use This Template in AI Studio</button>
-            </div>`:""}
-          </div>`).join("")}
+              <div class="template-grid" id="templateGrid">
+                ${renderTemplateCards(filtered)}
+              </div>
+            </div>
+          `}
+        </div>
       </div>
     </div>`;
 }
 
-function toggleTemplate(id) {
-  expandedTemplateId = expandedTemplateId === id ? null : id;
+function renderTemplateCards(list) {
+  return list.map(t => `
+    <div class="template-card ${selectedTemplateId===t.id?"active":""}" onclick="selectTemplate('${t.id}')">
+      <div class="template-card-header">
+        <div class="template-card-meta">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+            <span class="model-chip ${t.model.toLowerCase()}">${t.model}</span>
+            <span style="font-size:10.5px;color:var(--text-muted);font-family:var(--font-mono)">${t.id}</span>
+          </div>
+          <div class="template-card-title">${t.name}</div>
+          <div class="template-card-sub" style="margin-top:3px">${t.description.substring(0,70)}…</div>
+          <div class="template-card-tags">${t.tags.slice(0,4).map(tg=>`<span class="template-tag">${tg}</span>`).join("")}</div>
+        </div>
+      </div>
+      <div class="template-card-stats">
+        <div class="template-stat"><div class="template-stat-label">Base Rate</div><div class="template-stat-value">$${t.baseRate.toLocaleString()}</div></div>
+        <div class="template-stat"><div class="template-stat-label">Clauses</div><div class="template-stat-value">${t.clauses}</div></div>
+        <div class="template-stat"><div class="template-stat-label">Used In</div><div class="template-stat-value">${t.usedIn} ctr</div></div>
+        <div class="template-stat"><div class="template-stat-label">Updated</div><div class="template-stat-value">${t.lastUpdated}</div></div>
+      </div>
+    </div>`).join("");
+}
+
+function selectTemplate(id) {
+  selectedTemplateId = id;
   renderedScreens.delete("templates");
   renderTemplateRepository();
   renderedScreens.add("templates");
+}
+
+function setTemplateCategory(cat) {
+  templateCategory = cat;
+  selectedTemplateId = null;
+  renderedScreens.delete("templates");
+  renderTemplateRepository();
+  renderedScreens.add("templates");
+}
+
+function filterTemplates(search) {
+  const s = search.toLowerCase();
+  const base = templateCategory === "All" ? TEMPLATES : TEMPLATES.filter(t => t.category === templateCategory);
+  const filtered = !s ? base : base.filter(t =>
+    t.name.toLowerCase().includes(s) || t.category.toLowerCase().includes(s) ||
+    t.tags.some(tg => tg.includes(s)) || t.model.toLowerCase().includes(s)
+  );
+  const grid = document.getElementById("templateGrid");
+  if (grid) grid.innerHTML = renderTemplateCards(filtered);
 }
 
 // ─── Screen 8: Negotiation & Redlining ───────────────────────────────────────
