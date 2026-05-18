@@ -581,6 +581,15 @@ function updateApprovalBadge() {
 // ─── Screen: Network List ─────────────────────────────────────────────────────
 
 function renderNetworkList() {
+  const contracted    = PROVIDERS.filter(p=>p.status==="contracted");
+  const negotiating   = PROVIDERS.filter(p=>p.status==="in-negotiation");
+  const leads         = PROVIDERS.filter(p=>p.status==="lead");
+  const totalContracts= PROVIDERS.reduce((s,p)=>s+p.contracts,0);
+  const filtered = networkFilter === "All" ? PROVIDERS
+    : networkFilter === "contracted"    ? contracted
+    : networkFilter === "in-negotiation"? negotiating
+    : leads;
+
   document.getElementById("screen-network").innerHTML = `
     <div class="screen-header">
       <div class="screen-header-top">
@@ -589,26 +598,36 @@ function renderNetworkList() {
       </div>
     </div>
     <div class="screen-body">
-      <div class="stat-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
-        <div class="stat-card"><div class="stat-label">Contracted</div><div class="stat-value green">${PROVIDERS.filter(p=>p.status==="contracted").length}</div><div class="stat-sub">Active network</div></div>
-        <div class="stat-card"><div class="stat-label">In Negotiation</div><div class="stat-value amber">${PROVIDERS.filter(p=>p.status==="in-negotiation").length}</div><div class="stat-sub">Contract in progress</div></div>
-        <div class="stat-card"><div class="stat-label">Leads</div><div class="stat-value blue">${PROVIDERS.filter(p=>p.status==="lead").length}</div><div class="stat-sub">Prospective</div></div>
-        <div class="stat-card"><div class="stat-label">Total Contracts</div><div class="stat-value">${PROVIDERS.reduce((s,p)=>s+p.contracts,0)}</div><div class="stat-sub">Across network</div></div>
+      <div class="stat-row">
+        <div class="stat-card clickable ${networkFilter==="contracted"?"":""}" onclick="networkFilter='contracted';renderNetworkList()">
+          <div class="stat-label">Contracted</div><div class="stat-value green">${contracted.length}</div><div class="stat-sub">Active network · click to filter</div>
+        </div>
+        <div class="stat-card clickable" onclick="networkFilter='in-negotiation';renderNetworkList()">
+          <div class="stat-label">In Negotiation</div><div class="stat-value amber">${negotiating.length}</div><div class="stat-sub">Contract in progress · click to filter</div>
+        </div>
+        <div class="stat-card clickable" onclick="networkFilter='lead';renderNetworkList()">
+          <div class="stat-label">Leads</div><div class="stat-value blue">${leads.length}</div><div class="stat-sub">Prospective · click to filter</div>
+        </div>
+        <div class="stat-card clickable" onclick="networkFilter='All';renderNetworkList()">
+          <div class="stat-label">Total Contracts</div><div class="stat-value">${totalContracts}</div><div class="stat-sub">Across all providers · show all</div>
+        </div>
       </div>
       <div class="network-layout">
         <div class="network-left">
           <div class="section-card" style="overflow:hidden">
-            <div class="section-card-header"><span class="section-card-title">All Providers</span><span class="section-card-count">${PROVIDERS.length} total</span></div>
-            ${PROVIDERS.map(p => `
+            <div class="section-card-header">
+              <span class="section-card-title">${networkFilter === "All" ? "All Providers" : networkFilter === "contracted" ? "Contracted" : networkFilter === "in-negotiation" ? "In Negotiation" : "Leads"}</span>
+              <span class="section-card-count">${filtered.length} providers</span>
+            </div>
+            ${filtered.map(p => `
               <div class="provider-row ${selectedProviderId===p.id?"selected":""}" onclick="selectProvider('${p.id}')">
                 <div class="provider-row-info">
                   <div class="provider-row-name">${p.name}</div>
-                  <div class="provider-row-sub">${p.city} · ${p.type}</div>
+                  <div class="provider-row-sub">${p.hpiOrgId} · ${p.city}</div>
                 </div>
                 <div class="provider-row-meta">
                   <span class="tier-badge tier-${p.tier}">${p.tier.charAt(0).toUpperCase()+p.tier.slice(1)}</span>
-                  <span class="status-pill ${p.status==="contracted"?"active":p.status==="in-negotiation"?"pending":"draft"}" style="font-size:10px">${p.status==="contracted"?"Contracted":p.status==="in-negotiation"?"Negotiating":"Lead"}</span>
-                  ${p.contracts>0?`<span style="font-size:11px;color:var(--text-muted)">${p.contracts}c</span>`:""}
+                  <span class="status-pill ${p.status==="contracted"?"contracted":p.status==="in-negotiation"?"in-negotiation":"lead"}" style="font-size:10px">${p.status==="contracted"?"Contracted":p.status==="in-negotiation"?"Negotiating":"Lead"}</span>
                 </div>
               </div>`).join("")}
           </div>
@@ -618,6 +637,7 @@ function renderNetworkList() {
         </div>
       </div>
     </div>`;
+  if (selectedProviderId) selectProvider(selectedProviderId);
 }
 
 function selectProvider(id) {
@@ -629,22 +649,68 @@ function selectProvider(id) {
   );
   const relatedContracts = CONTRACTS.filter(c => c.provider === p.name);
   const contractsHtml = relatedContracts.length > 0
-    ? relatedContracts.map(c => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:12.5px"><span style="font-family:monospace;color:var(--blue);font-weight:600">${c.id}</span><span style="color:var(--text-muted);flex:1;margin:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.procedure}</span><span class="status-pill ${c.status.toLowerCase()}" style="font-size:10px">${c.status}</span></div>`).join("")
-    : `<div style="font-size:12.5px;color:var(--text-muted);padding:8px 0">No active contracts — ${p.status==="lead"?"start contracting below":"use AI Studio to draft"}</div>`;
+    ? relatedContracts.map(c => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <span style="font-family:var(--font-mono);color:var(--blue);font-weight:600">${c.id}</span>
+          <span style="color:var(--text-muted);flex:1;margin:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.contractType}</span>
+          <span class="status-pill ${c.status.toLowerCase()}" style="font-size:10px">${c.status}</span>
+        </div>`).join("")
+    : `<div style="font-size:12.5px;color:var(--text-muted);padding:6px 0">No contracts yet — ${p.status==="lead"?"start contracting below":"draft in AI Studio"}</div>`;
+
+  const hpiColor = p.hpiStatus === "Active" ? "var(--green)" : p.hpiStatus === "Pending" ? "var(--amber)" : "var(--red)";
+  const ytdSpendFmt = p.ytdSpend > 0 ? `$${(p.ytdSpend/1000).toFixed(0)}k NZD` : "—";
+  const annualProjected = p.ytdSpend > 0 ? `$${(p.ytdSpend * 12 / 5 / 1000).toFixed(0)}k projected` : "—";
 
   document.getElementById("providerDetail").innerHTML = `
-    <div class="detail-panel">
+    <div class="detail-panel" style="overflow-y:auto;height:100%">
       <div class="detail-header">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between">
-          <div><div class="detail-title">${p.name}</div><div class="detail-sub">${p.id} · ${p.city} · ${p.type}</div></div>
-          <span class="tier-badge tier-${p.tier}" style="font-size:12px;padding:4px 12px">${p.tier.charAt(0).toUpperCase()+p.tier.slice(1)}</span>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div>
+            <div class="detail-title">${p.name}</div>
+            <div class="detail-sub">${p.type} · ${p.city} · ${p.specialty}</div>
+          </div>
+          <span class="tier-badge tier-${p.tier}">${p.tier.charAt(0).toUpperCase()+p.tier.slice(1)}</span>
         </div>
       </div>
-      <div class="detail-section"><div class="detail-label">Status</div><span class="status-pill ${p.status==="contracted"?"active":p.status==="in-negotiation"?"pending":"draft"}">${p.status==="contracted"?"Contracted":p.status==="in-negotiation"?"In Negotiation":"Lead"}</span></div>
-      <div class="detail-section"><div class="detail-label">Primary Contact</div><div class="detail-value">${p.contact}</div></div>
-      <div class="detail-section"><div class="detail-label">Contracts (${relatedContracts.length})</div><div>${contractsHtml}</div></div>
+      <div class="detail-section">
+        <div class="detail-label">HPI Registration</div>
+        <div style="display:flex;flex-direction:column;gap:4px;font-size:12.5px">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">HPI Org ID</span><span style="font-family:var(--font-mono);font-weight:700;color:var(--blue)">${p.hpiOrgId}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Facility Code</span><span style="font-family:var(--font-mono)">${p.hpiFacilityCode}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">NZBN</span><span style="font-family:var(--font-mono)">${p.nzbn}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">HPI Status</span><span style="font-weight:600;color:${hpiColor}">${p.hpiStatus}${p.hpiExpiry ? " · expires "+p.hpiExpiry : ""}</span></div>
+        </div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">Relationship</div>
+        <div style="display:flex;flex-direction:column;gap:4px;font-size:12.5px">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Owner</span><span style="font-weight:600">${p.relationshipOwner}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Onboarded</span><span>${p.onboardingDate ?? "Not yet onboarded"}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Contract Stage</span><span class="status-pill ${p.status==="contracted"?"contracted":p.status==="in-negotiation"?"in-negotiation":"lead"}" style="font-size:10px">${p.status==="contracted"?"Contracted":p.status==="in-negotiation"?"In Negotiation":"Lead"}</span></div>
+        </div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">Financial Summary</div>
+        <div style="display:flex;flex-direction:column;gap:4px;font-size:12.5px">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">YTD Spend</span><span style="font-weight:700">${ytdSpendFmt}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Annual (projected)</span><span>${annualProjected}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">YTD Procedures</span><span>${p.annualVolume > 0 ? p.annualVolume : "—"}</span></div>
+        </div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">Contact</div>
+        <div style="font-size:12.5px;display:flex;flex-direction:column;gap:3px">
+          <div style="font-weight:600">${p.contact}</div>
+          <div style="color:var(--text-muted)">${p.contactEmail}</div>
+          <div style="color:var(--text-muted)">${p.contactPhone}</div>
+        </div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">Contracts (${relatedContracts.length})</div>
+        ${contractsHtml}
+      </div>
       <div class="detail-section" style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-sm primary" onclick="showScreen('studio')">Start Contracting in AI Studio</button>
+        <button class="btn-sm primary" onclick="showScreen('studio')">Draft Contract in AI Studio</button>
         ${relatedContracts.length>0?`<button class="btn-sm outline" onclick="showScreen('contracts')">View All Contracts</button>`:""}
       </div>
     </div>`;
