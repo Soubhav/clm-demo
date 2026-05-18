@@ -1097,6 +1097,78 @@ function renderIntegrations() {
     </div>`;
 }
 
+// ─── Screen: Admin Panel ─────────────────────────────────────────────────────
+
+function renderAdmin() {
+  document.getElementById("screen-admin").innerHTML = `
+    <div class="screen-header">
+      <div class="screen-header-top">
+        <div><div class="screen-title">Administration</div><div class="screen-sub">Role-based access control — manage users, roles, and permissions</div></div>
+      </div>
+    </div>
+    <div class="screen-body">
+      <div class="admin-section-title">Roles & Permissions</div>
+      <div class="admin-grid">
+        ${ROLES.map(role => `
+          <div class="role-card">
+            <div class="role-card-header">
+              <div class="role-color-dot" style="background:${role.color}"></div>
+              <div class="role-name">${role.name}</div>
+              <div class="role-user-count">${role.userCount} user${role.userCount!==1?"s":""}</div>
+            </div>
+            <div class="perm-list">
+              ${role.permissions.map(p => `
+                <div class="perm-tag ${p.allowed?"allowed":"denied"}">${p.name}</div>
+              `).join("")}
+            </div>
+          </div>`).join("")}
+      </div>
+
+      <div class="admin-section-title">Users</div>
+      <div class="users-section">
+        <div class="users-table-header">
+          <div class="users-th">Name</div>
+          <div class="users-th">Email</div>
+          <div class="users-th">Role</div>
+          <div class="users-th">Status</div>
+          <div class="users-th">Last Login</div>
+        </div>
+        ${USERS.map(u => `
+          <div class="user-row">
+            <div class="user-row-name">
+              <div class="user-initials" style="background:${u.avatarColor}">${u.initials}</div>
+              ${u.name}
+            </div>
+            <div class="user-row-email">${u.email}</div>
+            <div class="user-row-role">
+              <span class="status-pill ${u.role==="admin"?"negotiation":u.role==="senior_contract_manager"?"draft":u.role==="contract_manager"?"active":"lead"}" style="font-size:10px">${u.roleLabel}</span>
+            </div>
+            <div>
+              <span class="user-status-${u.status}">${u.status==="active"?"● Active":"● Inactive"}</span>
+            </div>
+            <div class="user-row-last">${u.lastLogin}</div>
+          </div>`).join("")}
+      </div>
+
+      <div style="margin-top:20px">
+        <div class="section-card">
+          <div class="section-card-header"><span class="section-card-title">CoFI & Audit Compliance</span></div>
+          <div style="padding:14px 18px;font-size:12.5px;color:var(--text);line-height:1.7">
+            Every action in the CLM is <strong>immutably logged</strong> with the user's identity, role, timestamp, and full record state.
+            Role changes and user provisioning are captured in the audit trail with 7-year retention. No admin action can bypass the log.
+          </div>
+          <div style="padding:0 18px 14px;display:flex;gap:6px;flex-wrap:wrap">
+            <span class="tag">CoFI Act ✓</span>
+            <span class="tag">7-year retention ✓</span>
+            <span class="tag">Immutable log ✓</span>
+            <span class="tag">Role-based access ✓</span>
+            <span class="tag">NZ Privacy Act ✓</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
 // ─── Contract Preview ─────────────────────────────────────────────────────────
 
 function renderContractPreview(draft, awaitingConfirm, financialImpact) {
