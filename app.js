@@ -958,16 +958,39 @@ function renderNegotiation() {
 
 function renderNegotiationDetail(neg) {
   if (!neg) return "";
-  const pendingCount   = neg.changes.filter(c => c.status === "pending").length;
-  const acceptedCount  = neg.changes.filter(c => c.status === "accepted").length;
-  const rejectedCount  = neg.changes.filter(c => c.status === "rejected").length;
+  const pendingCount  = neg.changes.filter(c => c.status === "pending").length;
+  const acceptedCount = neg.changes.filter(c => c.status === "accepted").length;
+  const rejectedCount = neg.changes.filter(c => c.status === "rejected").length;
+  const allResolved   = pendingCount === 0;
+
+  const collabBar = `
+    <div class="collab-bar">
+      <span class="collab-label">Active</span>
+      <div class="collab-avatars">
+        ${neg.collaborators.map(col => `<div class="collab-avatar ${col.online?"online":""}" title="${col.name} · ${col.role}${col.online?" (online)":""}">${col.initials}</div>`).join("")}
+      </div>
+      <span class="collab-status">${neg.collaborators.filter(c=>c.online).length} online · ${neg.collaborators.length} participants</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">Round ${neg.round} · Last activity ${neg.lastActivity}</span>
+    </div>`;
+
+  const voteBar = `
+    <div class="vote-bar">
+      <span class="vote-label">Team vote:</span>
+      <span class="vote-approve">✓ ${neg.votes.approve} approve</span>
+      <span class="vote-reject">✗ ${neg.votes.reject} reject</span>
+      <span class="vote-pending">${neg.votes.pending} pending</span>
+    </div>`;
 
   return `
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="section-card">
+      <div class="section-card" style="overflow:hidden">
+        ${collabBar}
         <div class="section-card-header">
-          <span class="section-card-title">${neg.provider} — Round ${neg.round}</span>
-          <div style="display:flex;gap:8px;font-size:11.5px">
+          <div>
+            <div style="font-size:13px;font-weight:700">${neg.provider}</div>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">${neg.contractType} · ${neg.hpiOrgId} · ${neg.contractId}</div>
+          </div>
+          <div style="display:flex;gap:8px;font-size:11.5px;align-items:center">
             <span style="color:var(--amber);font-weight:600">${pendingCount} pending</span>
             <span style="color:var(--green);font-weight:600">${acceptedCount} accepted</span>
             <span style="color:var(--red);font-weight:600">${rejectedCount} rejected</span>
@@ -975,10 +998,14 @@ function renderNegotiationDetail(neg) {
         </div>
         ${neg.changes.map(ch => `
           <div class="change-row">
-            <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="change-row-header">
               <div class="change-field">${ch.field}</div>
               ${ch.status==="pending"
-                ? `<div class="change-actions"><span class="change-proposer">Proposed by ${ch.proposedBy}</span><button class="btn-sm danger" onclick="resolveChange('${neg.id}','${ch.id}','rejected')">Reject</button><button class="btn-sm success" onclick="resolveChange('${neg.id}','${ch.id}','accepted')">Accept</button></div>`
+                ? `<div class="change-actions">
+                    <span class="change-proposer">${ch.proposedBy}</span>
+                    <button class="btn-sm danger" onclick="resolveChange('${neg.id}','${ch.id}','rejected')">Reject</button>
+                    <button class="btn-sm success" onclick="resolveChange('${neg.id}','${ch.id}','accepted')">Accept</button>
+                   </div>`
                 : `<span class="change-status-${ch.status}">${ch.status==="accepted"?"✓ Accepted":"✗ Rejected"}</span>`}
             </div>
             <div class="change-diff">
@@ -988,9 +1015,12 @@ function renderNegotiationDetail(neg) {
             </div>
             <div class="change-note">${ch.note}</div>
           </div>`).join("")}
+        ${voteBar}
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn-sm primary" onclick="alert('Send counter-proposal — available in Phase 2 full negotiation workflow')">Send Counter-Proposal</button>
+        ${allResolved
+          ? `<button class="btn-sm success" onclick="showScreen('approvals')">Submit for Approval →</button>`
+          : `<button class="btn-sm primary" onclick="alert('Send counter-proposal — available in Phase 2 full negotiation workflow')">Send Counter-Proposal</button>`}
         <button class="btn-sm outline">Export Redline PDF</button>
       </div>
     </div>`;
