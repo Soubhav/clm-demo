@@ -7,30 +7,32 @@ let currentDraft = null;
 let selectedContractId = null;
 let selectedNegotiationId = null;
 let expandedClauseId = null;
-let expandedTemplateId = null;
+let selectedTemplateId = null;
 let selectedProviderId = null;
 let clauseCategory = "All";
 let contractStatusFilter = "All";
+let templateCategory = "All";
+let networkFilter = "All";
 
 // ─── Synthetic data ───────────────────────────────────────────────────────────
 
 const CONTRACTS = [
-  { id: "CTR-001", provider: "Auckland Surgical Centre",    city: "Auckland",      procedure: "Total Knee Replacement", model: "TIERED",    rateRange: "$3,600–$4,200", cap: 150, status: "EXPIRING", expiry: "2026-07-31", ytd: 94,  networkTier: "preferred",
-    tiers: [{from:1,to:50,rate:4200},{from:51,to:100,rate:3900},{from:101,to:null,rate:3600}] },
-  { id: "CTR-002", provider: "Wellington Orthopaedics",     city: "Wellington",    procedure: "Total Knee Replacement", model: "FFS",       rateRange: "$4,050",        cap: 80,  status: "ACTIVE",   expiry: "2026-08-31", ytd: 61,  networkTier: "preferred",
-    rate: 4050 },
-  { id: "CTR-003", provider: "Christchurch Surgical Centre",city: "Christchurch",  procedure: "Knee Arthroscopy",       model: "FFS",       rateRange: "$2,800",        cap: 100, status: "ACTIVE",   expiry: "2026-09-30", ytd: 43,  networkTier: "preferred",
-    rate: 2800 },
-  { id: "CTR-004", provider: "Auckland Surgical Centre",    city: "Auckland",      procedure: "Knee Arthroscopy",       model: "TIERED",    rateRange: "$2,400–$2,900", cap: 200, status: "ACTIVE",   expiry: "2026-12-31", ytd: 112, networkTier: "preferred",
-    tiers: [{from:1,to:75,rate:2900},{from:76,to:150,rate:2600},{from:151,to:null,rate:2400}] },
-  { id: "CTR-005", provider: "Wellington Regional Hospital",city: "Wellington",    procedure: "Total Knee Replacement", model: "MATRIX",    rateRange: "$2,800–$5,000", cap: 120, status: "ACTIVE",   expiry: "2027-06-30", ytd: 38,  networkTier: "preferred",
-    matrix: {"A:high":5000,"A:low":3500,"B:high":4200,"B:low":2800} },
-  { id: "CTR-006", provider: "Auckland Surgical Centre",    city: "Auckland",      procedure: "Total Hip Replacement",  model: "STAIRCASE", rateRange: "$4,900–$5,800", cap: 120, status: "ACTIVE",      expiry: "2027-06-30", ytd: 107, networkTier: "preferred",
-    threshold: 100, rateBefore: 5800, rateAfter: 4900 },
-  { id: "CTR-007", provider: "Dunedin Surgical Group",      city: "Dunedin",       procedure: "Knee Arthroscopy",       model: "FFS",       rateRange: "$2,400",        cap: 60,  status: "NEGOTIATION", expiry: "2027-03-31", ytd: 0,   networkTier: "standard",
-    rate: 2400 },
-  { id: "CTR-DRAFT", provider: "Christchurch Surgical Centre", city: "Christchurch", procedure: "Total Knee Replacement", model: "TIERED",  rateRange: "$3,420–$3,990", cap: 120, status: "DRAFT",       expiry: "2027-06-30", ytd: 0,   networkTier: "preferred",
-    tiers: [{from:1,to:40,rate:3990},{from:41,to:80,rate:3705},{from:81,to:null,rate:3420}] },
+  { id:"CTR-001", provider:"Auckland Surgical Centre",     city:"Auckland",      contractType:"Surgical — Elective", procedure:"Total Knee Replacement", hpiOrgId:"G00001-K", procedureCode:"NZACS-1471", accCode:"SA11106", model:"TIERED",    rateRange:"$3,600–$4,200", cap:150, status:"EXPIRING",     effectiveDate:"2025-08-01", expiry:"2026-07-31", ytd:94,  networkTier:"preferred", relationshipOwner:"Sarah Mitchell",
+    tiers:[{from:1,to:50,rate:4200},{from:51,to:100,rate:3900},{from:101,to:null,rate:3600}] },
+  { id:"CTR-002", provider:"Wellington Orthopaedics",      city:"Wellington",    contractType:"Surgical — Elective", procedure:"Total Knee Replacement", hpiOrgId:"G00012-M", procedureCode:"NZACS-1471", accCode:"SA11106", model:"FFS",       rateRange:"$4,050",         cap:80,  status:"ACTIVE",       effectiveDate:"2025-09-01", expiry:"2026-08-31", ytd:61,  networkTier:"preferred", relationshipOwner:"James Okonkwo",
+    rate:4050 },
+  { id:"CTR-003", provider:"Christchurch Surgical Centre", city:"Christchurch",  contractType:"Surgical — Elective", procedure:"Knee Arthroscopy",       hpiOrgId:"G00023-P", procedureCode:"NZACS-1422", accCode:"SA11104", model:"FFS",       rateRange:"$2,800",         cap:100, status:"ACTIVE",       effectiveDate:"2025-10-01", expiry:"2026-09-30", ytd:43,  networkTier:"preferred", relationshipOwner:"Sarah Mitchell",
+    rate:2800 },
+  { id:"CTR-004", provider:"Auckland Surgical Centre",     city:"Auckland",      contractType:"Surgical — Elective", procedure:"Knee Arthroscopy",       hpiOrgId:"G00001-K", procedureCode:"NZACS-1422", accCode:"SA11104", model:"TIERED",    rateRange:"$2,400–$2,900",  cap:200, status:"ACTIVE",       effectiveDate:"2025-01-01", expiry:"2026-12-31", ytd:112, networkTier:"preferred", relationshipOwner:"Sarah Mitchell",
+    tiers:[{from:1,to:75,rate:2900},{from:76,to:150,rate:2600},{from:151,to:null,rate:2400}] },
+  { id:"CTR-005", provider:"Wellington Regional Hospital", city:"Wellington",    contractType:"Surgical — Elective", procedure:"Total Knee Replacement", hpiOrgId:"G00045-R", procedureCode:"NZACS-1471", accCode:"SA11106", model:"MATRIX",    rateRange:"$2,800–$5,000",  cap:120, status:"ACTIVE",       effectiveDate:"2026-07-01", expiry:"2027-06-30", ytd:38,  networkTier:"preferred", relationshipOwner:"James Okonkwo",
+    matrix:{"A:high":5000,"A:low":3500,"B:high":4200,"B:low":2800} },
+  { id:"CTR-006", provider:"Auckland Surgical Centre",     city:"Auckland",      contractType:"Surgical — Elective", procedure:"Total Hip Replacement",  hpiOrgId:"G00001-K", procedureCode:"NZACS-1502", accCode:"SA11109", model:"STAIRCASE", rateRange:"$4,900–$5,800",  cap:120, status:"ACTIVE",       effectiveDate:"2026-07-01", expiry:"2027-06-30", ytd:107, networkTier:"preferred", relationshipOwner:"Sarah Mitchell",
+    threshold:100, rateBefore:5800, rateAfter:4900 },
+  { id:"CTR-007", provider:"Dunedin Surgical Group",       city:"Dunedin",       contractType:"Surgical — Elective", procedure:"Knee Arthroscopy",       hpiOrgId:"G00067-T", procedureCode:"NZACS-1422", accCode:"SA11104", model:"FFS",       rateRange:"$2,400",         cap:60,  status:"NEGOTIATION",  effectiveDate:"2027-04-01", expiry:"2027-03-31", ytd:0,   networkTier:"standard",   relationshipOwner:"Sarah Mitchell",
+    rate:2400 },
+  { id:"CTR-DRAFT", provider:"Christchurch Surgical Centre",city:"Christchurch", contractType:"Surgical — Elective", procedure:"Total Knee Replacement", hpiOrgId:"G00023-P", procedureCode:"NZACS-1471", accCode:"SA11106", model:"TIERED",    rateRange:"$3,420–$3,990",  cap:120, status:"DRAFT",        effectiveDate:"2026-07-01", expiry:"2027-06-30", ytd:0,   networkTier:"preferred", relationshipOwner:"Sarah Mitchell",
+    tiers:[{from:1,to:40,rate:3990},{from:41,to:80,rate:3705},{from:81,to:null,rate:3420}] },
 ];
 
 const APPROVALS = [
@@ -80,35 +82,101 @@ const CLAUSES = [
 ];
 
 const PROVIDERS = [
-  { id:"PRV-001", name:"Auckland Surgical Centre",     city:"Auckland",     type:"Surgical Centre",   tier:"gold",     status:"contracted",     contracts:3, contact:"Michael Thompson" },
-  { id:"PRV-002", name:"Wellington Orthopaedics",      city:"Wellington",   type:"Specialist Clinic", tier:"gold",     status:"contracted",     contracts:1, contact:"Dr. Sarah Lee" },
-  { id:"PRV-003", name:"Christchurch Surgical Centre", city:"Christchurch", type:"Surgical Centre",   tier:"silver",   status:"in-negotiation", contracts:0, contact:"Dr. James Chen" },
-  { id:"PRV-004", name:"Wellington Regional Hospital", city:"Wellington",   type:"Hospital",          tier:"platinum", status:"contracted",     contracts:1, contact:"Helen Park" },
-  { id:"PRV-005", name:"Dunedin Surgical Group",       city:"Dunedin",      type:"Surgical Centre",   tier:"standard", status:"in-negotiation", contracts:0, contact:"Dr. Andrew Wu" },
-  { id:"PRV-006", name:"Hamilton Health Partners",     city:"Hamilton",     type:"Specialist Clinic", tier:"standard", status:"lead",           contracts:0, contact:"Dr. Maria Santos" },
+  { id:"PRV-001", name:"Auckland Surgical Centre",     city:"Auckland",     type:"Surgical Centre",   tier:"gold",     status:"contracted",     contracts:3, contact:"Michael Thompson", contactEmail:"m.thompson@aucklandsurgical.co.nz",   contactPhone:"+64 9 555 0100", hpiOrgId:"G00001-K", hpiFacilityCode:"F00034", nzbn:"9429041000001", specialty:"Orthopaedics",           onboardingDate:"2019-03-15", relationshipOwner:"Sarah Mitchell",  annualVolume:312, ytdSpend:1284600, hpiStatus:"Active", hpiExpiry:"2027-06-30" },
+  { id:"PRV-002", name:"Wellington Orthopaedics",      city:"Wellington",   type:"Specialist Clinic", tier:"gold",     status:"contracted",     contracts:1, contact:"Dr. Sarah Lee",    contactEmail:"s.lee@wellingtonortho.co.nz",        contactPhone:"+64 4 555 0200", hpiOrgId:"G00012-M", hpiFacilityCode:"F00089", nzbn:"9429041000002", specialty:"Orthopaedics",           onboardingDate:"2020-08-20", relationshipOwner:"James Okonkwo", annualVolume:88,  ytdSpend:356400,  hpiStatus:"Active", hpiExpiry:"2027-03-31" },
+  { id:"PRV-003", name:"Christchurch Surgical Centre", city:"Christchurch", type:"Surgical Centre",   tier:"silver",   status:"in-negotiation", contracts:0, contact:"Dr. James Chen",   contactEmail:"j.chen@chcsurgical.co.nz",           contactPhone:"+64 3 555 0300", hpiOrgId:"G00023-P", hpiFacilityCode:"F00112", nzbn:"9429041000003", specialty:"Orthopaedics",           onboardingDate:"2022-11-01", relationshipOwner:"Sarah Mitchell",  annualVolume:0,   ytdSpend:0,       hpiStatus:"Active", hpiExpiry:"2026-12-31" },
+  { id:"PRV-004", name:"Wellington Regional Hospital", city:"Wellington",   type:"Hospital",          tier:"platinum", status:"contracted",     contracts:1, contact:"Helen Park",       contactEmail:"h.park@wrh.health.nz",               contactPhone:"+64 4 555 0400", hpiOrgId:"G00045-R", hpiFacilityCode:"F00156", nzbn:"9429041000004", specialty:"Multi-Specialty",        onboardingDate:"2018-06-15", relationshipOwner:"James Okonkwo", annualVolume:156, ytdSpend:780000,  hpiStatus:"Active", hpiExpiry:"2028-01-31" },
+  { id:"PRV-005", name:"Dunedin Surgical Group",       city:"Dunedin",      type:"Surgical Centre",   tier:"standard", status:"in-negotiation", contracts:0, contact:"Dr. Andrew Wu",    contactEmail:"a.wu@dunedinsurgical.co.nz",         contactPhone:"+64 3 555 0500", hpiOrgId:"G00067-T", hpiFacilityCode:"F00198", nzbn:"9429041000005", specialty:"Orthopaedics",           onboardingDate:"2024-02-28", relationshipOwner:"Sarah Mitchell",  annualVolume:0,   ytdSpend:0,       hpiStatus:"Active", hpiExpiry:"2027-09-30" },
+  { id:"PRV-006", name:"Hamilton Health Partners",     city:"Hamilton",     type:"Specialist Clinic", tier:"standard", status:"lead",           contracts:0, contact:"Dr. Maria Santos", contactEmail:"m.santos@hamiltonhealth.co.nz",      contactPhone:"+64 7 555 0600", hpiOrgId:"G00089-W", hpiFacilityCode:"F00234", nzbn:"9429041000006", specialty:"Specialist Outpatient",  onboardingDate:null,         relationshipOwner:"James Okonkwo", annualVolume:0,   ytdSpend:0,       hpiStatus:"Pending", hpiExpiry:null },
 ];
 
 const NEGOTIATIONS = [
-  { id: "NEG-001", contractId: "CTR-DRAFT-CHC-001", provider: "Christchurch Surgical Centre", procedure: "Total Knee Replacement", round: 2, status: "in-progress", lastActivity: "13 May 2026",
-    changes: [
-      { id: "CH-001", type: "rate-change", field: "Tier 1 Rate (Claims 1–40)", from: "$3,990", to: "$4,100", proposedBy: "Provider", status: "pending", note: "Provider requests Tier 1 alignment with Auckland Surgical rates" },
-      { id: "CH-002", type: "clause-change", field: "Termination Notice Period", from: "60 days written notice", to: "90 days written notice", proposedBy: "Provider", status: "accepted", note: "Accepted — aligns with standard clause CL-002" },
-      { id: "CH-003", type: "cap-change", field: "Annual Volume Cap", from: "120 procedures/year", to: "140 procedures/year", proposedBy: "Insurer", status: "rejected", note: "Provider rejects — cites OR capacity constraints for 2026/27" },
+  { id:"NEG-001", contractId:"CTR-DRAFT-CHC-001", provider:"Christchurch Surgical Centre", contractType:"Surgical — Elective", hpiOrgId:"G00023-P", procedure:"Total Knee Replacement", round:2, status:"in-progress", lastActivity:"13 May 2026",
+    collaborators:[
+      { name:"Sarah Mitchell", role:"Contract Manager",        initials:"SM", online:true,  color:"#1e40af" },
+      { name:"James Okonkwo",  role:"Senior Contract Manager", initials:"JO", online:false, color:"#1e40af" },
+    ],
+    votes:{ approve:1, reject:0, pending:1 },
+    changes:[
+      { id:"CH-001", type:"rate-change",   field:"Tier 1 Rate (Claims 1–40)",  from:"$3,990",             to:"$4,100",               proposedBy:"Provider (G00023-P)",     proposerType:"provider", status:"pending",  note:"Provider requests Tier 1 alignment with Auckland Surgical rates" },
+      { id:"CH-002", type:"clause-change", field:"Termination Notice Period",   from:"60 days written notice", to:"90 days written notice", proposedBy:"Provider (G00023-P)", proposerType:"provider", status:"accepted", note:"Accepted — aligns with standard clause CL-002" },
+      { id:"CH-003", type:"cap-change",    field:"Annual Volume Cap",           from:"120 procedures/year",to:"140 procedures/year",  proposedBy:"Sarah Mitchell (Insurer)", proposerType:"insurer",  status:"rejected", note:"Provider rejects — cites OR capacity constraints for 2026/27" },
     ]
   },
-  { id: "NEG-002", contractId: "CTR-005", provider: "Wellington Regional Hospital", procedure: "Total Knee Replacement", round: 1, status: "awaiting-response", lastActivity: "10 May 2026",
-    changes: [
-      { id: "CH-004", type: "rate-change", field: "Matrix Rate A:High", from: "$5,000", to: "$4,800", proposedBy: "Insurer", status: "pending", note: "5-year volume growth justifies 4% rate reduction on highest complexity tier" },
-      { id: "CH-005", type: "clause-change", field: "Claims Reporting Frequency", from: "Quarterly", to: "Monthly", proposedBy: "Insurer", status: "pending", note: "Required for IQVIA TMB real-time integration in Phase 2" },
+  { id:"NEG-002", contractId:"CTR-005", provider:"Wellington Regional Hospital", contractType:"Surgical — Elective", hpiOrgId:"G00045-R", procedure:"Total Knee Replacement", round:1, status:"awaiting-response", lastActivity:"10 May 2026",
+    collaborators:[
+      { name:"James Okonkwo", role:"Senior Contract Manager", initials:"JO", online:true, color:"#1e40af" },
+    ],
+    votes:{ approve:0, reject:0, pending:1 },
+    changes:[
+      { id:"CH-004", type:"rate-change",   field:"Matrix Rate A:High · NZACS-1471", from:"$5,000", to:"$4,800", proposedBy:"James Okonkwo (Insurer)", proposerType:"insurer", status:"pending", note:"5-year volume growth justifies 4% rate reduction on highest complexity tier" },
+      { id:"CH-005", type:"clause-change", field:"Claims Reporting Frequency",       from:"Quarterly",  to:"Monthly",  proposedBy:"James Okonkwo (Insurer)", proposerType:"insurer", status:"pending", note:"Required for IQVIA TMB real-time integration in Phase 2" },
     ]
   },
 ];
 
 const TEMPLATES = [
-  { id:"TPL-001", name:"Knee Surgery — Standard",       bucket:"A", procedures:["Total Knee Replacement","Knee Arthroscopy"],          clauses:8,  model:"TIERED",    baseRate:4000, lastUpdated:"Mar 2026", usedIn:3 },
-  { id:"TPL-002", name:"Hip Surgery — Standard",        bucket:"B", procedures:["Total Hip Replacement"],                              clauses:8,  model:"STAIRCASE", baseRate:5000, lastUpdated:"Jan 2026", usedIn:1 },
-  { id:"TPL-003", name:"General Orthopaedics — FFS",    bucket:"B", procedures:["Shoulder Replacement","Ankle Surgery"],               clauses:7,  model:"FFS",       baseRate:3500, lastUpdated:"Feb 2026", usedIn:0 },
-  { id:"TPL-004", name:"Complex Surgery — Matrix",      bucket:"C", procedures:["Spinal Surgery","Complex Joint Reconstruction"],      clauses:10, model:"MATRIX",    baseRate:6000, lastUpdated:"Apr 2026", usedIn:1 },
+  { id:"TPL-001", name:"Surgical — Elective", category:"Surgical",
+    description:"Standard elective surgical procedures for contracted surgical centres and hospitals.",
+    tags:["elective","volume-cap","tiered","ACC-funded","NZACS","orthopaedics"],
+    model:"TIERED", baseRate:4000, clauses:8, lastUpdated:"Mar 2026", usedIn:4,
+    applicableTo:"Surgical Centres, Hospitals",
+    pricingNote:"Base rate × network tier multiplier. Platinum 1.2× · Gold 1.1× · Silver 1.05× · Standard 1.0×",
+    clauseList:["Standard Indemnity — Bilateral","Termination for Convenience — 90 Days","Patient Data — NZ Privacy Act 2020","Wait Time SLA — Elective Procedures","Monthly Claims Reporting Obligation","Rate Adjustment — CPI Indexation","Dispute Resolution — Mediation First","Clinical Negligence Exclusion"] },
+  { id:"TPL-002", name:"Surgical — Acute / Emergency", category:"Surgical",
+    description:"Acute and emergency surgical procedures including after-hours and ED components.",
+    tags:["acute","emergency","staircase","after-hours","hospital","ACC"],
+    model:"STAIRCASE", baseRate:5000, clauses:9, lastUpdated:"Jan 2026", usedIn:1,
+    applicableTo:"Hospitals, Level 3+ Facilities",
+    pricingNote:"Staircase — pre-threshold $5,000 · post-threshold $4,200. After-hours surcharge 15%.",
+    clauseList:["Standard Indemnity — Bilateral","Termination for Convenience — 90 Days","Patient Data — NZ Privacy Act 2020","After-Hours Surcharge Clause","Wait Time SLA — Emergency Triage","Monthly Claims Reporting Obligation","Rate Adjustment — CPI Indexation","Dispute Resolution — Mediation First","Clinical Negligence Exclusion"] },
+  { id:"TPL-003", name:"Specialist Outpatient", category:"Specialist",
+    description:"First specialist assessments (FSA) and ongoing specialist consultations.",
+    tags:["outpatient","FFS","FSA","specialist-consultation","referral"],
+    model:"FFS", baseRate:350, clauses:7, lastUpdated:"Feb 2026", usedIn:2,
+    applicableTo:"Specialist Clinics, Private Hospitals",
+    pricingNote:"Flat FFS per consultation. FSA $350 · Follow-up $280 · Procedure add-on rates in Schedule 1.",
+    clauseList:["Standard Indemnity — Bilateral","Termination for Convenience — 90 Days","Patient Data — NZ Privacy Act 2020","FSA Wait Time SLA","Monthly Claims Reporting Obligation","Rate Adjustment — CPI Indexation","Dispute Resolution — Mediation First"] },
+  { id:"TPL-004", name:"Radiology & Diagnostics", category:"Diagnostics",
+    description:"Imaging, radiology, and diagnostic procedure contracts.",
+    tags:["radiology","imaging","matrix","IQVIA-TMB","diagnostics","MRI","CT"],
+    model:"MATRIX", baseRate:280, clauses:7, lastUpdated:"Apr 2026", usedIn:1,
+    applicableTo:"Radiology Practices, Imaging Centres",
+    pricingNote:"Matrix pricing by modality (X-ray / CT / MRI / PET) × complexity. See Schedule 1.",
+    clauseList:["Standard Indemnity — Bilateral","Termination for Convenience — 90 Days","Patient Data — NZ Privacy Act 2020","Equipment Calibration and Quality Standards","Monthly Claims Reporting Obligation","Rate Adjustment — CPI Indexation","Dispute Resolution — Mediation First"] },
+  { id:"TPL-005", name:"Allied Health", category:"Allied Health",
+    description:"Physiotherapy, occupational therapy, speech language therapy and related services.",
+    tags:["allied-health","physiotherapy","ACC","FFS","session-cap","OT","SLT"],
+    model:"FFS", baseRate:120, clauses:6, lastUpdated:"Feb 2026", usedIn:3,
+    applicableTo:"Allied Health Providers, Community Clinics",
+    pricingNote:"FFS per session. Standard $120 · Extended $180 · Group $60/head. ACC surcharge applies.",
+    clauseList:["Standard Indemnity — Bilateral","Termination for Convenience — 90 Days","Patient Data — NZ Privacy Act 2020","ACC Co-Payment Compliance","Monthly Claims Reporting Obligation","Dispute Resolution — Mediation First"] },
+  { id:"TPL-006", name:"Mental Health & Wellbeing", category:"Mental Health",
+    description:"Psychology, psychiatry, counselling, and mental health and addictions services.",
+    tags:["mental-health","psychology","FFS","session-cap","psychiatry","counselling"],
+    model:"FFS", baseRate:200, clauses:8, lastUpdated:"Mar 2026", usedIn:2,
+    applicableTo:"Psychology Practices, Mental Health Clinics",
+    pricingNote:"FFS per session. Psychology $200 · Psychiatry $380. Annual session cap per member applies.",
+    clauseList:["Standard Indemnity — Bilateral","Termination for Convenience — 90 Days","Patient Data — NZ Privacy Act 2020","Session Cap — Annual Benefit Limit","Crisis Response Protocol","Monthly Claims Reporting Obligation","Rate Adjustment — CPI Indexation","Dispute Resolution — Mediation First"] },
+];
+
+const USERS = [
+  { id:"USR-001", name:"Sarah Mitchell", email:"s.mitchell@healthinsurer.co.nz", role:"contract_manager",        roleLabel:"Contract Manager",        status:"active",   lastLogin:"18 May 2026, 09:14", initials:"SM", avatarColor:"#1e40af" },
+  { id:"USR-002", name:"James Okonkwo",  email:"j.okonkwo@healthinsurer.co.nz",  role:"senior_contract_manager", roleLabel:"Senior Contract Manager", status:"active",   lastLogin:"18 May 2026, 08:47", initials:"JO", avatarColor:"#1e40af" },
+  { id:"USR-003", name:"Lisa Chen",      email:"l.chen@healthinsurer.co.nz",      role:"admin",                   roleLabel:"Administrator",           status:"active",   lastLogin:"17 May 2026, 16:33", initials:"LC", avatarColor:"#7c3aed" },
+  { id:"USR-004", name:"David Park",     email:"d.park@healthinsurer.co.nz",      role:"viewer",                  roleLabel:"Viewer",                  status:"active",   lastLogin:"16 May 2026, 11:20", initials:"DP", avatarColor:"#71717a" },
+  { id:"USR-005", name:"Emma Walsh",     email:"e.walsh@healthinsurer.co.nz",     role:"contract_manager",        roleLabel:"Contract Manager",        status:"inactive", lastLogin:"02 Apr 2026, 14:05", initials:"EW", avatarColor:"#1e40af" },
+];
+
+const ROLES = [
+  { id:"admin",                   name:"Administrator",           color:"#7c3aed", userCount:1,
+    permissions:[{name:"Create Contracts",allowed:true},{name:"Approve Contracts",allowed:true},{name:"Manage Users & Roles",allowed:true},{name:"System Configuration",allowed:true},{name:"View All Data",allowed:true},{name:"Delete Records",allowed:true}] },
+  { id:"senior_contract_manager", name:"Senior Contract Manager", color:"#2563eb", userCount:1,
+    permissions:[{name:"Create Contracts",allowed:true},{name:"Approve Contracts",allowed:true},{name:"Manage Users & Roles",allowed:false},{name:"System Configuration",allowed:false},{name:"View All Data",allowed:true},{name:"Delete Records",allowed:false}] },
+  { id:"contract_manager",        name:"Contract Manager",        color:"#0891b2", userCount:2,
+    permissions:[{name:"Create Contracts",allowed:true},{name:"Approve Contracts",allowed:false},{name:"Manage Users & Roles",allowed:false},{name:"System Configuration",allowed:false},{name:"View All Data",allowed:false},{name:"Delete Records",allowed:false}] },
+  { id:"viewer",                  name:"Viewer",                  color:"#71717a", userCount:1,
+    permissions:[{name:"Create Contracts",allowed:false},{name:"Approve Contracts",allowed:false},{name:"Manage Users & Roles",allowed:false},{name:"System Configuration",allowed:false},{name:"View All Data",allowed:false},{name:"Delete Records",allowed:false}] },
 ];
 
 const INTEGRATIONS = [
@@ -139,6 +207,7 @@ function showScreen(name) {
       negotiation:  renderNegotiation,
       templates:    renderTemplateRepository,
       integrations: renderIntegrations,
+      admin:        renderAdmin,
     };
     renderers[name]?.();
   }
