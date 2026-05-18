@@ -276,52 +276,66 @@ function renderDashboard() {
     .concat(CONTRACTS.filter(c => c.status === "ACTIVE" && new Date(c.expiry) < new Date("2026-09-01")))
     .slice(0, 3);
   const pendingApprovals = APPROVALS.filter(a => a.status === "PENDING");
+  const activeCount = CONTRACTS.filter(c => c.status === "ACTIVE").length;
 
   document.getElementById("screen-dashboard").innerHTML = `
     <div class="screen-header">
       <div class="screen-header-top">
         <div>
           <div class="screen-title">Good morning, Sarah.</div>
-          <div class="screen-sub">Thursday, 15 May 2026 · Here's your contract portfolio.</div>
+          <div class="screen-sub">Monday, 18 May 2026 · Here is your contract portfolio at a glance.</div>
         </div>
-        <button class="btn-sm primary" onclick="showScreen('studio')">+ New Contract in AI Studio</button>
+        <div class="screen-actions">
+          <button class="btn-sm outline" onclick="showScreen('network')">+ New Provider</button>
+          <button class="btn-sm primary" onclick="showScreen('studio')">+ New Contract</button>
+        </div>
       </div>
     </div>
     <div class="screen-body">
       <div class="stat-row">
-        <div class="stat-card"><div class="stat-label">Active Contracts</div><div class="stat-value blue">6</div><div class="stat-sub">Across 4 providers</div></div>
-        <div class="stat-card"><div class="stat-label">Pending Approval</div><div class="stat-value amber">${pendingApprovals.length}</div><div class="stat-sub">Awaiting your action</div></div>
-        <div class="stat-card"><div class="stat-label">Utilization Alerts</div><div class="stat-value red">${alertContracts.length}</div><div class="stat-sub">Above 75% of cap</div></div>
-        <div class="stat-card"><div class="stat-label">Expiring ≤ 90 days</div><div class="stat-value amber">1</div><div class="stat-sub">CTR-001 · 77 days</div></div>
+        <div class="stat-card clickable" onclick="setContractStatusFilter('Active');showScreen('contracts')">
+          <div class="stat-label">Active Contracts</div><div class="stat-value blue">${activeCount}</div><div class="stat-sub">Across 4 providers · click to view</div>
+        </div>
+        <div class="stat-card clickable" onclick="showScreen('approvals')">
+          <div class="stat-label">Pending Approval</div><div class="stat-value amber">${pendingApprovals.length}</div><div class="stat-sub">Awaiting your action · click to review</div>
+        </div>
+        <div class="stat-card clickable" onclick="setContractStatusFilter('All');showScreen('contracts')">
+          <div class="stat-label">Utilization Alerts</div><div class="stat-value red">${alertContracts.length}</div><div class="stat-sub">Above 75% of cap · click to view</div>
+        </div>
+        <div class="stat-card clickable" onclick="setContractStatusFilter('Expiring');showScreen('contracts')">
+          <div class="stat-label">Expiring ≤ 90 days</div><div class="stat-value amber">1</div><div class="stat-sub">CTR-001 · 74 days left · click to view</div>
+        </div>
       </div>
       <div class="dashboard-grid">
         <div>
           <div class="section-card">
-            <div class="section-card-header"><span class="section-card-title">Utilization Alerts</span><span class="section-card-count">${alertContracts.length} contracts</span></div>
+            <div class="section-card-header"><span class="section-card-title">Utilization Alerts</span><span class="section-card-count">${alertContracts.length} contracts above 75%</span></div>
             ${alertContracts.map(c => {
               const level = c.pct >= 90 ? "critical" : "warning";
               const weeksLeft = Math.round(((c.cap - c.ytd) / (c.ytd / 10)) * 4.33);
-              return `<div class="alert-row"><div class="alert-info"><div class="alert-title">${c.provider}</div><div class="alert-sub">${c.procedure} · ${c.id} · ${c.model}</div><div class="alert-bar-wrap"><div class="alert-bar ${level}" style="width:${c.pct}%"></div></div></div><div class="alert-meta"><div class="alert-pct ${level}">${c.pct}%</div><div class="alert-days">${c.ytd}/${c.cap} · ~${weeksLeft}w to cap</div><button class="btn-sm outline" style="margin-top:6px;font-size:11px" onclick="showScreen('contracts')">View Contract</button></div></div>`;
+              return `<div class="alert-row"><div class="alert-info"><div class="alert-title">${c.provider}</div><div class="alert-sub">${c.id} · ${c.hpiOrgId} · ${c.model}</div><div class="alert-bar-wrap"><div class="alert-bar ${level}" style="width:${c.pct}%"></div></div></div><div class="alert-meta"><div class="alert-pct ${level}">${c.pct}%</div><div class="alert-days">${c.ytd}/${c.cap} · ~${weeksLeft}w left</div><button class="btn-sm outline" style="margin-top:6px" onclick="showScreen('contracts')">View</button></div></div>`;
             }).join("")}
           </div>
           <div class="section-card">
             <div class="section-card-header"><span class="section-card-title">Expiring Contracts</span><span class="section-card-count">within 90 days</span></div>
             ${expiring.map(c => {
-              const days = Math.round((new Date(c.expiry) - new Date("2026-05-15")) / 86400000);
+              const days = Math.round((new Date(c.expiry) - new Date("2026-05-18")) / 86400000);
               const urgency = days <= 30 ? "critical" : days <= 60 ? "warning" : "ok";
-              return `<div class="alert-row"><div class="alert-info"><div class="alert-title">${c.provider}</div><div class="alert-sub">${c.procedure} · ${c.id} · Expires ${c.expiry}</div></div><div class="alert-meta"><div class="alert-pct ${urgency}">${days}d</div><div class="alert-days">remaining</div><button class="btn-sm outline" style="margin-top:6px;font-size:11px" onclick="showScreen('studio')">Renew</button></div></div>`;
+              return `<div class="alert-row"><div class="alert-info"><div class="alert-title">${c.provider}</div><div class="alert-sub">${c.id} · ${c.hpiOrgId} · Expires ${c.expiry}</div></div><div class="alert-meta"><div class="alert-pct ${urgency}">${days}d</div><div class="alert-days">remaining</div><button class="btn-sm outline" style="margin-top:6px" onclick="showScreen('studio')">Renew</button></div></div>`;
             }).join("")}
           </div>
         </div>
         <div>
           <div class="section-card">
             <div class="section-card-header"><span class="section-card-title">Pending Approvals</span><span class="section-card-count">${pendingApprovals.length} awaiting action</span></div>
-            ${pendingApprovals.map(a => `<div class="approval-row"><div class="approval-type"><span class="status-pill ${a.type==="New Contract"?"draft":"pending"}">${a.type}</span></div><div class="approval-info"><div class="approval-title">${a.provider}</div><div class="approval-sub">${a.procedure} · ${a.contractId}</div><div class="approval-sub" style="margin-top:3px">$${a.annualValue.toLocaleString()} estimated annual value</div></div><button class="btn-sm primary" style="flex-shrink:0" onclick="showScreen('approvals')">Review</button></div>`).join("")}
+            ${pendingApprovals.map(a => `<div class="approval-row"><div style="flex-shrink:0"><span class="status-pill ${a.type==="New Contract"?"draft":"pending"}">${a.type}</span></div><div class="approval-info"><div class="approval-title">${a.provider}</div><div class="approval-sub">${a.contractId} · $${a.annualValue.toLocaleString()} est. annual</div></div><button class="btn-sm primary" style="flex-shrink:0" onclick="showScreen('approvals')">Review</button></div>`).join("")}
           </div>
-          <div class="section-card">
-            <div class="section-card-header"><span class="section-card-title">Recent AI Activity</span><span class="section-card-count">Today</span></div>
-            ${ACTIVITY.slice(0,4).map(a => `<div class="activity-row"><div class="activity-dot" style="background:var(--${a.dot})"></div><div class="activity-body"><div class="activity-text">${a.text}</div><div class="activity-time">${a.time} · AI Studio</div></div></div>`).join("")}
-          </div>
+        </div>
+      </div>
+      <div class="dashboard-bottom">
+        <div class="section-card">
+          <div class="section-card-header"><span class="section-card-title">Recent Activity</span><span class="section-card-count">Today · AI Studio</span></div>
+          ${ACTIVITY.map(a => `<div class="activity-row"><div class="activity-dot" style="background:var(--${a.dot})"></div><div class="activity-body"><div class="activity-text">${a.text}</div><div class="activity-time">${a.time} · AI Studio</div></div></div>`).join("")}
         </div>
       </div>
     </div>`;
@@ -349,14 +363,22 @@ function renderContracts() {
     </div>
     <div class="status-tabs">${tabsHtml}</div>
     <div class="filter-bar">
-      <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search provider, procedure, or contract ID..." oninput="filterContracts(this.value)" /></div>
+      <div class="search-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search by provider, HPI code, or contract ID..." oninput="filterContracts(this.value)" /></div>
       <select class="filter-select" onchange="filterContracts('',this.value)"><option value="">All models</option><option value="TIERED">Tiered</option><option value="FFS">FFS</option><option value="MATRIX">Matrix</option><option value="STAIRCASE">Staircase</option></select>
     </div>
     <div class="screen-body" style="padding-top:0">
       <div class="registry-layout">
         <div class="registry-left">
           <div class="contracts-table">
-            <div class="table-header"><div class="th">Contract</div><div class="th">Provider</div><div class="th">Procedure</div><div class="th">Model</div><div class="th">Rate</div><div class="th">Cap</div><div class="th">Status</div></div>
+            <div class="table-header">
+              <div class="th">ID</div>
+              <div class="th">Provider</div>
+              <div class="th">HPI Code</div>
+              <div class="th">Contract Type</div>
+              <div class="th">Effective</div>
+              <div class="th">Expiry</div>
+              <div class="th">Status</div>
+            </div>
             <div id="contractRows">${renderContractRows(CONTRACTS)}</div>
           </div>
         </div>
@@ -369,11 +391,11 @@ function renderContractRows(list) {
   return list.map(c => `
     <div class="table-row ${c.id===selectedContractId?"selected":""}" onclick="selectContract('${c.id}')">
       <div class="td mono">${c.id}</div>
-      <div class="td">${c.provider.replace(" Centre","").replace(" Hospital","")}</div>
-      <div class="td muted">${c.procedure}</div>
-      <div class="td"><span class="status-pill draft" style="font-size:10px">${c.model}</span></div>
-      <div class="td muted" style="font-size:12px">${c.rateRange}</div>
-      <div class="td muted">${c.cap}</div>
+      <div class="td" style="font-weight:500">${c.provider.replace(" Centre","").replace(" Hospital","").replace(" Surgical","")}</div>
+      <div class="td mono" style="color:var(--text-muted);font-size:11px">${c.hpiOrgId}</div>
+      <div class="td muted">${c.contractType}</div>
+      <div class="td muted">${c.effectiveDate}</div>
+      <div class="td muted">${c.expiry}</div>
       <div class="td"><span class="status-pill ${c.status.toLowerCase()}">${c.status}</span></div>
     </div>`).join("");
 }
@@ -388,7 +410,7 @@ function filterContracts(search, model) {
       || (contractStatusFilter === "Draft"       && c.status === "DRAFT")
       || (contractStatusFilter === "Negotiation" && c.status === "NEGOTIATION");
     return matchesStatus &&
-      (!s || c.id.toLowerCase().includes(s) || c.provider.toLowerCase().includes(s) || c.procedure.toLowerCase().includes(s)) &&
+      (!s || c.id.toLowerCase().includes(s) || c.provider.toLowerCase().includes(s) || c.hpiOrgId.toLowerCase().includes(s) || c.contractType.toLowerCase().includes(s)) &&
       (!m || c.model === m);
   });
   const rows = document.getElementById("contractRows");
@@ -407,28 +429,71 @@ function selectContract(id) {
   const c = CONTRACTS.find(x => x.id === id);
   if (!c) return;
   document.querySelectorAll(".table-row").forEach(r => {
-    r.classList.toggle("selected", r.querySelector(".mono")?.textContent === id);
+    r.classList.toggle("selected", r.getAttribute("onclick")?.includes(`'${id}'`));
   });
   const pct = Math.round((c.ytd / c.cap) * 100);
-  const level = pct >= 90 ? "critical" : pct >= 80 ? "warning" : pct >= 60 ? "warning" : "ok";
-  const days = Math.round((new Date(c.expiry) - new Date("2026-05-15")) / 86400000);
+  const level = pct >= 90 ? "critical" : pct >= 75 ? "warning" : "ok";
+  const days = Math.round((new Date(c.expiry) - new Date("2026-05-18")) / 86400000);
   let rateDetail = "";
   if (c.model === "TIERED") {
-    rateDetail = c.tiers.map((t,i) => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12.5px"><span style="color:var(--text-muted)">Tier ${i+1}: ${t.from}–${t.to??"∞"}</span><strong>$${t.rate.toLocaleString()}</strong></div>`).join("");
+    rateDetail = c.tiers.map((t,i) => `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12.5px"><span style="color:var(--text-muted)">Tier ${i+1}: ${t.from}–${t.to??"∞"}</span><strong>$${t.rate.toLocaleString()} NZD</strong></div>`).join("");
   } else if (c.model === "FFS") {
-    rateDetail = `<div style="font-size:14px;font-weight:700">$${c.rate.toLocaleString()} NZD <span style="font-size:12px;font-weight:400;color:var(--text-muted)">flat rate</span></div>`;
+    rateDetail = `<div style="font-size:14px;font-weight:700">$${c.rate.toLocaleString()} NZD <span style="font-size:12px;font-weight:400;color:var(--text-muted)">flat fee-for-service</span></div>`;
   } else if (c.model === "STAIRCASE") {
-    rateDetail = `<div style="font-size:12.5px;display:flex;flex-direction:column;gap:5px"><div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Claims 1–${c.threshold}</span><span style="${c.ytd>=c.threshold?"text-decoration:line-through;color:var(--text-muted)":"font-weight:700"}">$${c.rateBefore.toLocaleString()}</span></div><div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Claims ${c.threshold+1}+</span><span style="${c.ytd>=c.threshold?"font-weight:700;color:var(--amber)":""}">$${c.rateAfter.toLocaleString()}</span></div>${c.ytd>=c.threshold?`<div style="font-size:11px;color:var(--amber);margin-top:3px">⚡ Threshold crossed at ${c.ytd} procedures</div>`:""}</div>`;
+    rateDetail = `<div style="font-size:12.5px;display:flex;flex-direction:column;gap:5px"><div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-muted)">Claims 1–${c.threshold}</span><span style="${c.ytd>=c.threshold?"text-decoration:line-through;color:var(--text-muted)":"font-weight:700"}">$${c.rateBefore.toLocaleString()}</span></div><div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--text-muted)">Claims ${c.threshold+1}+</span><span style="${c.ytd>=c.threshold?"font-weight:700;color:var(--amber)":""}">$${c.rateAfter.toLocaleString()}</span></div>${c.ytd>=c.threshold?`<div style="font-size:11px;color:var(--amber);margin-top:3px;padding:3px 6px;background:var(--amber-bg);border-radius:4px">⚡ Threshold crossed at ${c.ytd} procedures</div>`:""}</div>`;
   } else if (c.model === "MATRIX") {
-    rateDetail = Object.entries(c.matrix).map(([k,v]) => { const [f,cx]=k.split(":"); return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12.5px"><span style="color:var(--text-muted)">Facility ${f} · ${cx}</span><strong>$${v.toLocaleString()}</strong></div>`; }).join("");
+    rateDetail = Object.entries(c.matrix).map(([k,v]) => { const [f,cx]=k.split(":"); return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12.5px"><span style="color:var(--text-muted)">Facility ${f} · ${cx} complexity</span><strong>$${v.toLocaleString()}</strong></div>`; }).join("");
   }
+  const canSign = c.status === "DRAFT" || c.status === "NEGOTIATION";
+  const signBtn = canSign
+    ? `<button class="btn-sm success" onclick="sendForSignature('${c.id}')">Send for Signature</button>`
+    : `<button class="btn-sm disabled" title="Already signed — contract is ${c.status}">Send for Signature</button>`;
+
   document.getElementById("contractDetail").innerHTML = `
-    <div class="detail-panel" style="height:100%">
-      <div class="detail-header"><div style="display:flex;align-items:center;justify-content:space-between"><div><div class="detail-title">${c.provider}</div><div class="detail-sub">${c.id} · ${c.procedure}</div></div><span class="status-pill ${c.status.toLowerCase()}">${c.status}</span></div></div>
-      <div class="detail-section"><div class="detail-label">Pricing Model</div><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span class="status-pill draft">${c.model}</span><span style="font-size:12px;color:var(--text-muted)">${c.city} · ${c.networkTier.toUpperCase()} network</span></div>${rateDetail}</div>
-      <div class="detail-section"><div class="detail-label">YTD Utilization</div><div class="util-bar-wrap"><div class="util-bar" style="width:${pct}%;background:var(--${level==="ok"?"green":level==="warning"?"amber":"red"})"></div></div><div style="display:flex;justify-content:space-between;font-size:12px;margin-top:5px"><span style="font-weight:600">${c.ytd} of ${c.cap} procedures (${pct}%)</span><span class="util-alert-badge ${level}">${level.toUpperCase()}</span></div></div>
-      <div class="detail-section"><div class="detail-label">Contract Period</div><div class="detail-value">Expires <strong>${c.expiry}</strong> · ${days} days remaining</div></div>
-      <div class="detail-section" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-sm primary" onclick="showScreen('studio')">Amend in AI Studio</button><button class="btn-sm outline" onclick="showScreen('studio')">Initiate Renewal</button>${(c.status==="ACTIVE"||c.status==="EXPIRING")?`<button class="btn-sm success" onclick="sendForSignature('${c.id}')">Send for Signature ✉</button>`:""}</div>
+    <div class="detail-panel" style="height:100%;overflow-y:auto">
+      <div class="detail-header">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div>
+            <div class="detail-title">${c.provider}</div>
+            <div class="detail-sub">${c.id} · ${c.city}</div>
+          </div>
+          <span class="status-pill ${c.status.toLowerCase()}">${c.status}</span>
+        </div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">Identifiers</div>
+        <div style="display:flex;flex-direction:column;gap:4px;font-size:12.5px">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">HPI Org ID</span><span style="font-family:var(--font-mono);font-weight:600;color:var(--blue)">${c.hpiOrgId}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Procedure Code</span><span style="font-family:var(--font-mono);font-weight:600">${c.procedureCode}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">ACC Code</span><span style="font-family:var(--font-mono);font-weight:600">${c.accCode}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Contract Type</span><span>${c.contractType}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Relationship Owner</span><span>${c.relationshipOwner}</span></div>
+        </div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">Pricing · <span style="font-weight:400">${c.model}</span></div>
+        ${rateDetail}
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">YTD Utilization</div>
+        <div class="util-bar-wrap" style="margin-bottom:6px"><div class="util-bar" style="width:${pct}%;background:var(--${level==="ok"?"green":level==="warning"?"amber":"red"})"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px">
+          <span style="font-weight:600">${c.ytd} of ${c.cap} procedures (${pct}%)</span>
+          <span class="util-alert-badge ${level}">${level.toUpperCase()}</span>
+        </div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">Contract Period</div>
+        <div style="font-size:12.5px;display:flex;flex-direction:column;gap:3px">
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Effective</span><span>${c.effectiveDate}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--text-muted)">Expiry</span><strong>${c.expiry} · ${days}d remaining</strong></div>
+        </div>
+      </div>
+      <div class="detail-section" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-sm primary" onclick="showScreen('studio')">Amend in AI Studio</button>
+        <button class="btn-sm outline" onclick="showScreen('studio')">Initiate Renewal</button>
+        ${signBtn}
+      </div>
     </div>`;
 }
 
